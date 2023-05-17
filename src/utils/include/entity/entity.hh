@@ -14,8 +14,16 @@ typedef struct Pose2D_Tag
     float y;
 } Pose2D, *Pose2DPtr;
 
+typedef struct Vector3D_Tag
+{
+    float x;
+    float y;
+    float th;
+} Vector3D, *Vector3DPtr;
+
 typedef Pose3D CarPose, *CarPosePtr;
-// array of lane on pose2d
 typedef Pose2D Lane, *LanePtr;
+typedef Vector3D Velocity, *VelocityPtr;
+typedef Vector3D Target, *TargetPtr;
 
 #endif
