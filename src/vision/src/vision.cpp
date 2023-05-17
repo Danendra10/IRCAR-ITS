@@ -5,6 +5,12 @@
 #include "image_transport/image_transport.h"
 #include <chrono>
 #include <vector>
+#include "nav_msgs/Odometry.h"
+#include "entity/entity.hh"
+#include "geometry_msgs/Point.h"
+
+#define RAD2DEG(rad) ((rad)*180.0 / M_PI)
+#define DEG2RAD(deg) ((deg)*M_PI / 180.0)
 
 //============================================================
 
@@ -14,6 +20,10 @@ using namespace cv;
 //============================================================
 
 image_transport::Subscriber sub_raw_frame;
+
+ros::Subscriber sub_odom;
+
+ros::Publisher pub_car_pose;
 
 ros::Timer tim_30hz;
 
@@ -29,10 +39,12 @@ boost::mutex mutex_raw_frame;
 
 uint8_t validators = 0b000;
 std::chrono::time_point<std::chrono::system_clock> curr_time;
+CarPose car_pose;
 
 //============================================================
 
 void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
 
 //============================================================
 
@@ -69,6 +81,9 @@ int main(int argc, char **argv)
     tim_30hz = NH.createTimer(ros::Duration(1.0 / 30.0), Tim30HzCllbck);
 
     sub_raw_frame = IT.subscribe("/catvehicle/camera_front/image_raw_front", 1, SubRawFrameCllbck);
+    sub_odom = NH.subscribe("/catvehicle/odom", 1, SubOdomRaw);
+
+    pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
 
     MTS.spin();
 
@@ -82,6 +97,19 @@ void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg)
     mutex_raw_frame.unlock();
 
     validators |= 0b001;
+}
+
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
+{
+    car_pose.x = msg->pose.pose.position.x;
+    car_pose.y = msg->pose.pose.position.y;
+    car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
+
+    geometry_msgs::Point car_pose_msg;
+    car_pose_msg.x = car_pose.x;
+    car_pose_msg.y = car_pose.y;
+    car_pose_msg.z = car_pose.th;
+    pub_car_pose.publish(car_pose_msg);
 }
 
 void Tim30HzCllbck(const ros::TimerEvent &event)
@@ -101,7 +129,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     vector<Vec4i> left_lines;
     vector<Vec4i> right_lines;
     vector<Vec4i> middle_lines;
-    // vector of extrapolation point left and right
+
     vector<Point> left_extrapolation_points;
     vector<Point> right_extrapolation_points;
 
@@ -112,12 +140,6 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     middle_points = GetMiddlePoints(points, wrapped_frame.cols);
     middle_left = GetMiddleOfLeftRoad(left_points, middle_points);
     middle_right = GetMiddleOfRightRoad(right_points, middle_points);
-
-    // for (int i = 0; i < points.size(); i++)
-    // {
-    //     Point p = points[i];
-    //     circle(wrapped_frame, p, 5, Scalar(0, 0, 255), -1);
-    // }
 
     for (int i = 0; i < left_points.size(); i++)
     {
@@ -149,44 +171,14 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         circle(wrapped_frame, p, 5, Scalar(255, 0, 255), -1);
     }
 
-    
-
-    // left_lines = GetLeftLines(lines);
-    // right_lines = GetRightLines(lines, wrapped_frame.cols);
-    // middle_lines = GetMiddleLines(lines, wrapped_frame.cols);
-
-    // for (int i = 0; i < left_lines.size(); i++)
-    // {
-    //     Vec4i l = left_lines[i];
-    //     line(wrapped_frame, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 3, LINE_AA);
-    // }
-
-    // for (int i = 0; i < right_lines.size(); i++)
-    // {
-    //     Vec4i l = right_lines[i];
-    //     line(wrapped_frame, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 3, LINE_AA);
-    // }
-
-    // for (int i = 0; i < middle_lines.size(); i++)
-    // {
-    //     Vec4i l = middle_lines[i];
-    //     line(wrapped_frame, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 3, LINE_AA);
-    // }
-
-    // std::vector<cv::Vec4i> middle_left = GetMiddlePoints(left_lines, middle_lines);
-
-    // extrapolate left line
-
     circle(raw_frame, Point(0, 800), 5, Scalar(0, 0, 255), -1);
 
     imshow("frame", raw_frame);
     imshow("wrapped_frame", wrapped_frame);
     waitKey(1);
-
-    printf("validators: %d\n", validators);
 }
 
-//============================================================
+//========================================================================================================================
 
 void Init()
 {

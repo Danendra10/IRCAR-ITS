@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   image_transport
+  nav_msgs
+  utils
 )
 
 find_package(OpenCV REQUIRED)
@@ -33,4 +35,4 @@ catkin_install_python(PROGRAMS
 
 
 add_executable(vision_cpp src/vision.cpp)
-target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
+target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib)
