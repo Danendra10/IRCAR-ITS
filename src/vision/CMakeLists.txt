@@ -6,7 +6,11 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  cv_bridge
+  image_transport
 )
+
+find_package(OpenCV REQUIRED)
 
 catkin_package(
  INCLUDE_DIRS include
@@ -16,11 +20,17 @@ catkin_package(
 )
 
 include_directories(
-include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 catkin_install_python(PROGRAMS
   scripts/vision.py
+  scripts/trial.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+
+add_executable(vision_cpp src/vision.cpp)
+target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )

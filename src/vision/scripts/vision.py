@@ -137,41 +137,118 @@ def detect(image):
     return lines, masked_edges, x1_sorted, y1_sorted, x2_sorted, y2_sorted, line_pts
 
 
-def StoreArray(line_pts):
-    middle = []
-    left = []
-    right = []
+def average_slope_intercept(lines):
+    """
+    Find the slope and intercept of the left and right lanes of each image.
+        Parameters:
+            lines: The output lines from Hough Transform.
+    """
+    left_lines = []  # (slope, intercept)
+    left_weights = []  # (length,)
+    right_lines = []  # (slope, intercept)
+    right_weights = []  # (length,)
 
-    min_x = []
-    max_x = []
-    robot_pose = 0  # 1 = left side, 2 = right side
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            if x1 == x2:
+                continue
+            slope = (y2 - y1) / (x2 - x1)
+            intercept = y1 - (slope * x1)
+            length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
+            if slope < 0:
+                left_lines.append((slope, intercept))
+                left_weights.append((length))
+            else:
+                right_lines.append((slope, intercept))
+                right_weights.append((length))
+
+    # add more weight to longer lines
+    left_lane = np.dot(left_weights, left_lines) / \
+        np.sum(left_weights) if len(left_weights) > 0 else None
+    right_lane = np.dot(right_weights, right_lines) / \
+        np.sum(right_weights) if len(right_weights) > 0 else None
+
+    return left_lane, right_lane
 
 
-    # for i in range(len(line_pts)):
-    #     if (line_pts[i][0] < min_x):
-    #         min_x = line_pts[i][0]
-    #     if (line_pts[i][0] > max_x):
-    #         max_x = line_pts[i][0]
+def average_slope_intercept(lines):
+    """
+    Find the slope and intercept of the left and right lanes of each image.
+        Parameters:
+            lines: The output lines from Hough Transform.
+    """
+    left_lines = []  # (slope, intercept)
+    left_weights = []  # (length,)
+    right_lines = []  # (slope, intercept)
+    right_weights = []  # (length,)
 
-    # for i in range(len(line_pts)):
-    #     # Update min_x and max_x within each iteration
-    #     min_x = min(min_x, line_pts[i][0])
-    #     max_x = max(max_x, line_pts[i][0])
-    #     print(f"min_x: {min_x} || max_x: {max_x}")
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            if x1 == x2:
+                continue
+            slope = (y2 - y1) / (x2 - x1)
+            intercept = y1 - (slope * x1)
+            length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
+            if slope < 0:
+                left_lines.append((slope, intercept))
+                left_weights.append((length))
+            else:
+                right_lines.append((slope, intercept))
+                right_weights.append((length))
+    left_lane = np.dot(left_weights,  left_lines) / \
+        np.sum(left_weights) if len(left_weights) > 0 else None
+    right_lane = np.dot(right_weights, right_lines) / \
+        np.sum(right_weights) if len(right_weights) > 0 else None
+    return left_lane, right_lane
 
-    #     if line_pts[i][0] <= (min_x + 200) and line_pts[i][0] <= 400:
-    #         left.append(line_pts[i])
-    #     elif line_pts[i][0] >= (max_x - 200) and line_pts[i][0] >= 400:
-    #         right.append(line_pts[i])
-    #     else:
-    #         middle.append(line_pts[i])
 
-    if (len(middle) > 0):
-        if (middle[0][0] < 400):
-            robot_pose = 2
-        else:
-            robot_pose = 1
-    return left, right, middle, robot_pose
+def pixel_points(y1, y2, line):
+    """
+    Converts the slope and intercept of each line into pixel points.
+        Parameters:
+            y1: y-value of the line's starting point.
+            y2: y-value of the line's end point.
+            line: The slope and intercept of the line.
+    """
+    if line is None:
+        return None
+    slope, intercept = line
+    x1 = int((y1 - intercept)/slope)
+    x2 = int((y2 - intercept)/slope)
+    y1 = int(y1)
+    y2 = int(y2)
+    return ((x1, y1), (x2, y2))
+
+
+def lane_lines(image, lines):
+    """
+    Create full lenght lines from pixel points.
+        Parameters:
+            image: The input test image.
+            lines: The output lines from Hough Transform.
+    """
+    left_lane, right_lane = average_slope_intercept(lines)
+    y1 = image.shape[0]
+    y2 = y1 * 0.6
+    left_line = pixel_points(y1, y2, left_lane)
+    right_line = pixel_points(y1, y2, right_lane)
+    return left_line, right_line
+
+
+def draw_lane_lines(image, lines, color=[255, 0, 0], thickness=12):
+    """
+    Draw lines onto the input image.
+        Parameters:
+            image: The input test image.
+            lines: The output lines from Hough Transform.
+            color (Default = red): Line color.
+            thickness (Default = 12): Line thickness. 
+    """
+    line_image = np.zeros_like(image)
+    for line in lines:
+        if line is not None:
+            cv.line(line_image, *line,  color, thickness)
+    return cv.addWeighted(image, 1.0, line_image, 1.0, 0.0)
 
 
 def DetermineCurrPose(x1, y1, x2, y2):
@@ -265,15 +342,12 @@ def ImageCllbck(frame):
     lines, new_frame, x1_arr, y1_arr, x2_arr, y2_arr, line_pts = detect(
         wraped_frame)
 
-    lane_position = CategorizeLane(lines)
-    print("lane_position = ", lane_position)
-
     left_line_arr = []
     right_line_arr = []
     middle_line_arr = []
 
-    left_line_arr, right_line_arr, middle_line_arr, robot_pose = StoreArray(
-        line_pts)
+    # iterate from pixel 0, 800
+    
 
     # draw the right and left lines
     # for i in range(len(left_line_arr)):
@@ -285,10 +359,6 @@ def ImageCllbck(frame):
 
     left_middle_pts = []
     right_middle_pts = []
-    if robot_pose == 1:
-        left_middle_pts = GetMiddlePtsLeft(left_line_arr, middle_line_arr)
-    if robot_pose == 2:
-        right_middle_pts = GetMiddlePtsRight(right_line_arr, middle_line_arr)
 
     # for i in range(len(left_middle_pts)):
     #     cv.circle(wraped_frame, left_middle_pts[i], 5, (255, 0, 0), -1)

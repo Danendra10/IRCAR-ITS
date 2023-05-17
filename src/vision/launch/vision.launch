@@ -1,3 +1,4 @@
 <launch>
-    <node name="vision" pkg="vision" type="vision.py" />
+    <!-- <node name="vision" pkg="vision" type="vision.py" /> -->
+    <node name="vision_cpp" pkg="vision" type="vision_cpp" output="screen" respawn="true" />
 </launch>

@@ -9,168 +9,133 @@ from std_msgs.msg import UInt8
 bridge = CvBridge()
 
 
-def click_event(event, x, y, flags, param):
-    global raw_frame
-    if event == cv.EVENT_LBUTTONDOWN:
-        print(x, ', ', y)
-        font = cv.FONT_HERSHEY_SIMPLEX
-        strXY = str(x) + ', ' + str(y)
-        cv.putText(raw_frame, strXY, (x, y), font, 1, (255, 255, 0), 2)
-        cv.imshow('frame_raw', raw_frame)
+def HSL_color_selection(image):
+    """
+    Apply color selection to the HSL images to blackout everything except for white and yellow lane lines.
+        Parameters:
+            image: An np.array compatible with plt.imshow.
+    """
+    # Convert the input image to HSL
+    converted_image = cv.cvtColor(image, cv.COLOR_RGB2HLS)
+
+    # White color mask
+    lower_threshold = np.uint8([0, 200, 0])
+    upper_threshold = np.uint8([255, 255, 255])
+    white_mask = cv.inRange(converted_image, lower_threshold, upper_threshold)
+
+    # Yellow color mask
+    lower_threshold = np.uint8([10, 0, 100])
+    upper_threshold = np.uint8([40, 255, 255])
+    yellow_mask = cv.inRange(
+        converted_image, lower_threshold, upper_threshold)
+
+    # Combine white and yellow masks
+    mask = cv.bitwise_or(white_mask, yellow_mask)
+    masked_image = cv.bitwise_and(image, image, mask=mask)
+
+    return masked_image
 
 
-def DetectLane(image):
-    # Convert image to grayscale
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+def hough_transform(image):
+    """
+    Determine and cut the region of interest in the input image.
+        Parameters:
+            image: The output of a Canny transform.
+    """
+    rho = 1  # Distance resolution of the accumulator in pixels.
+    theta = np.pi/180  # Angle resolution of the accumulator in radians.
+    # Only lines that are greater than threshold will be returned.
+    threshold = 20
+    minLineLength = 20  # Line segments shorter than that are rejected.
+    maxLineGap = 300  # Maximum allowed gap between points on the same line to link them
+    return cv.HoughLinesP(image, rho=rho, theta=theta, threshold=threshold,
+                          minLineLength=minLineLength, maxLineGap=maxLineGap)
 
-    # Apply Gaussian blur
-    blur = cv.GaussianBlur(gray, (5, 5), 0)
 
-    # Perform Canny edge detection
-    edges = cv.Canny(blur, 50, 150)
-
-    # Define a region of interest (ROI) polygon
-    height, width = edges.shape
-    roi_vertices = np.array(
-        [[(0, height - 130), (0, height * 2 / 3), (width, height * 2 / 3), (width, height - 130)]], dtype=np.int32)
-    mask = np.zeros_like(edges)
-    cv.fillPoly(mask, roi_vertices, 255)
-
-    # Apply the mask to extract the ROI
-    masked_edges = cv.bitwise_and(edges, mask)
-
-    # Apply Hough transform to detect lines
-    lines = cv.HoughLinesP(masked_edges, rho=1, theta=np.pi /
-                           180, threshold=50, minLineLength=50, maxLineGap=100)
-
-    # Separate lines into left and right lanes based on their slopes
-    left_lane_slope = []
-    right_lane_slope = []
-    left_lane_intercept = []
-    right_lane_intercept = []
-    # print(f"{lines}\n\n")
-
-    # sorted_lines = sorted()
+def average_slope_intercept(lines):
+    """
+    Find the slope and intercept of the left and right lanes of each image.
+        Parameters:
+            lines: The output lines from Hough Transform.
+    """
+    left_lines = []  # (slope, intercept)
+    left_weights = []  # (length,)
+    right_lines = []  # (slope, intercept)
+    right_weights = []  # (length,)
 
     for line in lines:
-        x1, y1, x2, y2 = line
-        slope = (y2 - y1) / (x2 - x1)
-        intercept = y1 - slope * x1
-
-        if slope > 0:
-            left_lane_slope.append(slope)
-            left_lane_intercept.append(intercept)
-        else:
-            right_lane_slope.append(slope)
-            right_lane_intercept.append(intercept)
-    # print(f"left {left_lane_intercept} || right {right_lane_intercept}\n\n")
-
-    # Calculate average slope and intercept for left lane
-    left_slope = np.mean(left_lane_slope)
-    left_intercept = np.mean(left_lane_intercept)
-    left_lane = ((height - left_intercept) / left_slope,
-                 0), ((height / 2 - left_intercept) / left_slope, height / 2)
-
-    # Calculate average slope and intercept for right lane
-    right_slope = np.mean(right_lane_slope)
-    right_intercept = np.mean(right_lane_intercept)
-    right_lane = ((height - right_intercept) / right_slope,
-                  0), ((height / 2 - right_intercept) / right_slope, height / 2)
-
-    return left_lane, right_lane, masked_edges, mask
+        for x1, y1, x2, y2 in line:
+            if x1 == x2:
+                continue
+            slope = (y2 - y1) / (x2 - x1)
+            intercept = y1 - (slope * x1)
+            length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
+            if slope < 0:
+                left_lines.append((slope, intercept))
+                left_weights.append((length))
+            else:
+                right_lines.append((slope, intercept))
+                right_weights.append((length))
+    left_lane = np.dot(left_weights,  left_lines) / \
+        np.sum(left_weights) if len(left_weights) > 0 else None
+    right_lane = np.dot(right_weights, right_lines) / \
+        np.sum(right_weights) if len(right_weights) > 0 else None
+    return left_lane, right_lane
 
 
-def detect(image):
-    # Convert image to grayscale
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-    # Apply Gaussian blur
-    blur = cv.GaussianBlur(gray, (5, 5), 0)
-
-    # Perform Canny edge detection
-    edges = cv.Canny(blur, 50, 150)
-
-    # Define a region of interest (ROI) polygon
-    height, width = edges.shape
-    roi_vertices = np.array(
-        [[(0, height - 130), (0, height * 1 / 3), (width, height * 1 / 3), (width, height - 130)]], dtype=np.int32)
-    mask = np.zeros_like(edges)
-    cv.fillPoly(mask, roi_vertices, 255)
-
-    # Apply the mask to extract the ROI
-    masked_edges = cv.bitwise_and(edges, mask)
-
-    # Apply Hough transform to detect lines
-    lines = cv.HoughLinesP(masked_edges, rho=1, theta=np.pi /
-                           180, threshold=50, minLineLength=50, maxLineGap=100)
-    np_lines = np.array(lines)
-
-    # Extract the values from the array
-    x1 = np_lines[:, 0, 0]
-    y1 = np_lines[:, 0, 1]
-    x2 = np_lines[:, 0, 2]
-    y2 = np_lines[:, 0, 3]
-
-    # Sort the array based on the first index (arr[0][0])
-    sorted_indices = np.argsort(x1)
-    sorted_arr = np_lines[sorted_indices]
-
-    # Sort the values based on the sorted indices
-    x1_sorted = x1[sorted_indices]
-    y1_sorted = y1[sorted_indices]
-    x2_sorted = x2[sorted_indices]
-    y2_sorted = y2[sorted_indices]
-    for i in range(sorted_arr.shape[0]):
-        x1 = x1_sorted[i]
-        x2 = x2_sorted[i]
-        y1 = y1_sorted[i]
-        y2 = y2_sorted[i]
-        cv.line(raw_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-    return lines, masked_edges, x1_sorted, y1_sorted, x2_sorted, y2_sorted
+def pixel_points(y1, y2, line):
+    """
+    Converts the slope and intercept of each line into pixel points.
+        Parameters:
+            y1: y-value of the line's starting point.
+            y2: y-value of the line's end point.
+            line: The slope and intercept of the line.
+    """
+    if line is None:
+        return None
+    slope, intercept = line
+    x1 = int((y1 - intercept)/slope)
+    x2 = int((y2 - intercept)/slope)
+    y1 = int(y1)
+    y2 = int(y2)
+    return ((x1, y1), (x2, y2))
 
 
-def DetermineCurrPose(x1, y1, x2, y2):
-    global now
-    state = 0
-    cnt_total_in_left = 0
-    cnt_total_in_right = 0
-    cnt_total_in_middle = 0
-    for i in range(len(x1)):
-        if (x1[i] <= (400 - 100)):
-            cnt_total_in_left += 1
-        elif (x1[i] >= (400+100)):
-            cnt_total_in_right += 1
-        else:
-            cnt_total_in_middle += 1
-
-    # print("Current Time =", now)
-    # print("current_time diff = ", datetime.now() - now)
-    delta = datetime.now() - now
-    delta = (str)(delta)
-    delta = (int)(delta[6])
-    if (delta > 2):
-        state_right = (int)(
-            (cnt_total_in_right > cnt_total_in_middle and cnt_total_in_right > cnt_total_in_left))
-        state_middle = (int)(
-            (cnt_total_in_middle > cnt_total_in_right and cnt_total_in_middle > cnt_total_in_left))
-        state_left = (int)(
-            (cnt_total_in_left > cnt_total_in_middle and cnt_total_in_left > cnt_total_in_right))
-        print(cnt_total_in_right, cnt_total_in_left,
-              cnt_total_in_middle, state_left, state_middle, state_right)
-        now = datetime.now()
-        current_time = now.strftime("%H:%M:%S")
-    return state_right, state_middle, state_left
+def lane_lines(image, lines):
+    """
+    Create full lenght lines from pixel points.
+        Parameters:
+            image: The input test image.
+            lines: The output lines from Hough Transform.
+    """
+    left_lane, right_lane = average_slope_intercept(lines)
+    y1 = image.shape[0]
+    y2 = y1 * 0.6
+    left_line = pixel_points(y1, y2, left_lane)
+    right_line = pixel_points(y1, y2, right_lane)
+    return left_line, right_line
 
 
-def ImageCllbck(frame):
-    global raw_frame, new_frame
+def draw_lane_lines(image, lines, color=[255, 0, 0], thickness=12):
+    """
+    Draw lines onto the input image.
+        Parameters:
+            image: The input test image.
+            lines: The output lines from Hough Transform.
+            color (Default = red): Line color.
+            thickness (Default = 12): Line thickness. 
+    """
+    line_image = np.zeros_like(image)
+    for line in lines:
+        if line is not None:
+            cv.line(line_image, *line,  color, thickness)
+    return cv.addWeighted(image, 1.0, line_image, 1.0, 0.0)
 
-    raw_frame = bridge.imgmsg_to_cv2(frame, "bgr8")
 
+def BirdEye(frame):
     pt_a = (2,  414)
-    pt_b = (2,  690)
-    pt_c = (798,  690)
+    pt_b = (2,  670)
+    pt_c = (798,  670)
     pt_d = (798,  414)
 
     width_AD = np.sqrt((pt_a[0] - pt_d[0])**2 + (pt_a[1] - pt_d[1])**2)
@@ -179,44 +144,28 @@ def ImageCllbck(frame):
     height_AB = np.sqrt((pt_a[0] - pt_b[0])**2 + (pt_a[1] - pt_b[1])**2)
     height_CD = np.sqrt((pt_c[0] - pt_d[0])**2 + (pt_c[1] - pt_d[1])**2)
 
-    max_width = max(int(width_AD), int(width_BC))
-    max_height = max(int(height_AB), int(height_CD))
-
     input_pts = np.float32([pt_a, pt_b, pt_c, pt_d])
 
     output_pts = np.float32(
         [[0, 0], [0, 800], [800, 800], [800, 0]])
 
-    M = cv.getPerspectiveTransform(input_pts, output_pts)
-
-    focal_length = 403.92  # Adjust this value based on your requirement
-
-    M[0, 0] *= focal_length
-    M[1, 1] *= focal_length
+    Mask = cv.getPerspectiveTransform(input_pts, output_pts)
 
     wraped_frame = cv.warpPerspective(
-        raw_frame, M, (800, 800), flags=cv.INTER_LINEAR)
+        frame, Mask, (800, 800), flags=cv.INTER_LINEAR)
 
-    lines, new_frame, x1_arr, y1_arr, x2_arr, y2_arr = detect(raw_frame)
+    return wraped_frame
 
-    # state_right, state_middle, state_left = DetermineCurrPose(
-    #     x1_arr, y1_arr, x2_arr, y2_arr)
 
-    # if (state_right != 0 and state_left == 0 and state_middle == 0):
-    #     state = 1
-    # elif (state_middle != 0 and state_left == 0 and state_right == 0):
-    #     state = 2
-    # elif (state_left != 0 and state_right == 0 and state_middle == 0):
-    #     state = 3
-    # else:
-    #     state = 2
+def ImageCllbck(frame):
+    global raw_frame, new_frame
 
-    # print(state)
+    raw_frame = bridge.imgmsg_to_cv2(frame, "bgr8")
 
-    cv.imshow("frame_raw", raw_frame)
-    cv.imshow("masked", new_frame)
-    cv.imshow("wraped", wraped_frame)
-    cv.setMouseCallback('frame_raw', click_event)
+    wrapped = BirdEye(raw_frame)
+
+    cv.imshow("wrapped", wrapped)
+    cv.imshow("hsl", hsl)
     cv.waitKey(1)
 
 
