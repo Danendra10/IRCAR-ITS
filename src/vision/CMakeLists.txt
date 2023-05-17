@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   nav_msgs
   utils
+  msg_collection
 )
 
 find_package(OpenCV REQUIRED)

@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   utils
   geometry_msgs
+  msg_collection
 )
 
 find_package(OpenCV REQUIRED)

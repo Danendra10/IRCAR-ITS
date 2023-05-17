@@ -8,6 +8,7 @@
 #include "nav_msgs/Odometry.h"
 #include "entity/entity.hh"
 #include "geometry_msgs/Point.h"
+#include "msg_collection/PointArray.h"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
@@ -24,6 +25,7 @@ image_transport::Subscriber sub_raw_frame;
 ros::Subscriber sub_odom;
 
 ros::Publisher pub_car_pose;
+ros::Publisher pub_points;
 
 ros::Timer tim_30hz;
 
@@ -84,6 +86,7 @@ int main(int argc, char **argv)
     sub_odom = NH.subscribe("/catvehicle/odom", 1, SubOdomRaw);
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
+    pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
 
     MTS.spin();
 
@@ -173,6 +176,44 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     circle(raw_frame, Point(0, 800), 5, Scalar(0, 0, 255), -1);
 
+    msg_collection::PointArray points_msg;
+    for (int i = 0; i < left_points.size(); i++)
+    {
+        Point p = left_points[i];
+        points_msg.left_lane_x.push_back(p.x);
+        points_msg.left_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < right_points.size(); i++)
+    {
+        Point p = right_points[i];
+        points_msg.right_lane_x.push_back(p.x);
+        points_msg.right_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_points.size(); i++)
+    {
+        Point p = middle_points[i];
+        points_msg.middle_lane_x.push_back(p.x);
+        points_msg.middle_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_left.size(); i++)
+    {
+        Point p = middle_left[i];
+        points_msg.left_target_x.push_back(p.x);
+        points_msg.left_target_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_right.size(); i++)
+    {
+        Point p = middle_right[i];
+        points_msg.right_target_x.push_back(p.x);
+        points_msg.right_target_y.push_back(p.y);
+    }
+
+    pub_points.publish(points_msg);
+
     imshow("frame", raw_frame);
     imshow("wrapped_frame", wrapped_frame);
     waitKey(1);
@@ -244,14 +285,6 @@ vector<Point> GetPoints(Mat wrapped_frame)
 
     fillConvexPoly(mask, roi_vertices, Scalar(255, 255, 255));
 
-    // bitwise_and(edges, mask, masked_edges);
-
-    // vector<Vec4i> lines;
-
-    // HoughLinesP(masked_edges, lines, 1, CV_PI / 180, 50, 50, 100);
-
-    imshow("edges", edges);
-    // if the edges color is white, then store the point
     for (int i = 0; i < edges.rows; i++)
     {
         for (int j = 0; j < edges.cols; j++)

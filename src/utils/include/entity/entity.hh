@@ -15,5 +15,7 @@ typedef struct Pose2D_Tag
 } Pose2D, *Pose2DPtr;
 
 typedef Pose3D CarPose, *CarPosePtr;
+// array of lane on pose2d
+typedef Pose2D Lane, *LanePtr;
 
 #endif

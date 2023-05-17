@@ -1,0 +1,4 @@
+<launch>
+    <node name="master" pkg="master" type="master" output="screen" respawn="true" />
+    <node name="vision_cpp" pkg="vision" type="vision_cpp" output="screen" respawn="true" />
+</launch>
