@@ -570,7 +570,6 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     {
         float obs_x = (points[i]->y * 10) + 400;
         float obs_y = (points[i]->x * -10) + 700;
-        printf("raw obs: %f %f | frame obs: %f %f\n", points[i]->x, points[i]->y, obs_x, obs_y);
         cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
     }
 

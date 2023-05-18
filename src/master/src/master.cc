@@ -8,8 +8,9 @@ int main(int argc, char **argv)
 
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
 
-    general_instance.sub_car_pose = NH.subscribe("car_pose", 1, CllbckSubCarPose);
-    general_instance.sub_lines = NH.subscribe("lines", 1, CllbckSubLaneVector);
+    general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
+    general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
+    general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
     general_instance.tim_60_hz = NH.createTimer(ros::Duration(1.0 / 60.0), CllbckTim60Hz);
@@ -99,17 +100,54 @@ void SimulatorState()
     }
 }
 
-void DecideCarTarget(general_data_ptr data)
+void DecideCarTarget(general_data_ptr general_data)
 {
-    if (data->middle_lane.size() < 0)
-        return;
-    if (data->middle_lane[0].x == 0)
-        return;
+    try
+    {
+        float car_to_left = sqrt(pow(general_data->car_pose.x - general_data->left_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->left_lane[0].y, 2));
+        float car_to_rght = sqrt(pow(general_data->car_pose.x - general_data->right_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->right_lane[0].y, 2));
 
-    data->car_target.x = data->middle_lane[0].x;
-    data->car_target.y = data->middle_lane[0].y;
-    data->car_target.th = atan2(data->car_target.y - data->car_pose.y, data->car_target.x - data->car_pose.x);
-    printf("car_target.th: %f\n", data->car_target.th);
+        if (general_data->obs_status)
+        {
+            float dist_from_left = sqrt(pow(general_data->left_lane[0].x - general_data->obs_data[0].x, 2) + pow(general_data->left_lane[0].y - general_data->obs_data[0].y, 2));
+            float dist_from_rght = sqrt(pow(general_data->right_lane[0].x - general_data->obs_data[1].x, 2) + pow(general_data->right_lane[0].y - general_data->obs_data[1].y, 2));
+            if (dist_from_left < dist_from_rght)
+                general_data->car_side = 10; // in left
+            else
+                general_data->car_side = 20;
+
+            switch (general_data->car_side)
+            {
+            case 10:
+                printf("left\n");
+                general_data->car_target.x = general_data->right_lane[0].x;
+                general_data->car_target.y = general_data->right_lane[0].y;
+                break;
+
+                //====================================================================
+
+            case 20:
+                printf("right\n");
+                general_data->car_target.x = general_data->left_lane[0].x;
+                general_data->car_target.y = general_data->left_lane[0].y;
+                break;
+            }
+            return;
+        }
+
+        if (general_data->middle_lane.size() < 0)
+            return;
+        if (general_data->middle_lane[0].x == 0)
+            return;
+
+        general_data->car_target.x = general_data->middle_lane[0].x;
+        general_data->car_target.y = general_data->middle_lane[0].y;
+        general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
+    }
+    catch (...)
+    {
+        printf("error\n");
+    }
 }
 
 void RobotMovement(general_data_ptr data)

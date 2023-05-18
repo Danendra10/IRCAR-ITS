@@ -23,7 +23,8 @@ typedef struct general_data_tag
     CarPose car_pose;
     Target car_target;
     CarData car_data;
-    Obstacles obs_data;
+    vector<Obstacles> raw_obs_data;
+    vector<Obstacles> obs_data;
 
     ros::Publisher pub_car_vel;
     ros::Subscriber sub_car_pose;
@@ -41,6 +42,10 @@ typedef struct general_data_tag
 
     MachineState main_state;
 
+    uint8_t obs_status;
+    uint8_t car_side;
+    uint8_t moved_state;
+
 } general_data_t, *general_data_ptr;
 
 //==============================================================================
@@ -53,7 +58,29 @@ void CllbckTim60Hz(const ros::TimerEvent &event);
 
 void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 {
-    
+    general_instance.raw_obs_data.clear();
+    general_instance.obs_data.clear();
+
+    if (msg->x.size() == 0)
+    {
+        general_instance.obs_status = 0;
+        return;
+    }
+
+    for (int i = 0; i < msg->x.size(); i++)
+    {
+        Obstacles raw_obs;
+        raw_obs.x = msg->x[i];
+        raw_obs.y = msg->y[i];
+        general_instance.raw_obs_data.push_back(raw_obs);
+
+        Obstacles obs;
+        obs.x = msg->x[i] - general_instance.car_pose.x;
+        obs.y = msg->y[i] - general_instance.car_pose.y;
+        general_instance.obs_data.push_back(obs);
+
+        general_instance.obs_status = 1;
+    }
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
