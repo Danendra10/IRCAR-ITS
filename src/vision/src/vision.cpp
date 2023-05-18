@@ -44,14 +44,19 @@ boost::mutex mutex_raw_frame;
 uint8_t validators = 0b000;
 std::chrono::time_point<std::chrono::system_clock> curr_time;
 CarPose car_pose;
-vector<Obstacles> raw_obstacles;
-vector<Obstacles> obstacles;
+
+vector<ObstaclesPtr> raw_obstacles;
+vector<ObstaclesPtr> obstacles;
+
+vector<Point> left_points;
+vector<Point> right_points;
+vector<Point> middle_points;
 
 //============================================================
 
 void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
 void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg, vector<ObstaclesPtr> obstacles, vector<ObstaclesPtr> raw_obstacles);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
 
 //============================================================
 
@@ -67,6 +72,8 @@ std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point> &points, int 
 std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int frameWidth);
 std::vector<cv::Point> GetMiddleOfLeftRoad(const std::vector<cv::Point> &leftPoints, const std::vector<cv::Point> &middlePoints);
 std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point> &rightPoints, const std::vector<cv::Point> &middlePoints);
+
+Mat DrawObsPoints(const vector<ObstaclesPtr> &points);
 
 std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i> &lines);
 std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
@@ -89,6 +96,7 @@ int main(int argc, char **argv)
 
     sub_raw_frame = IT.subscribe("/catvehicle/camera_front/image_raw_front", 1, SubRawFrameCllbck);
     sub_odom = NH.subscribe("/catvehicle/odom", 1, SubOdomRaw);
+    sub_lidar_data = NH.subscribe("/lidar_data", 1, SubLidarData);
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
     pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
@@ -120,9 +128,10 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     pub_car_pose.publish(car_pose_msg);
 }
 
-void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg, vector<ObstaclesPtr> obstacles, vector<ObstaclesPtr> raw_obstacles)
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 {
     obstacles.clear();
+    raw_obstacles.clear();
     for (int i = 0; i < msg->x.size(); i++)
     {
         ObstaclesPtr obstacle(new Obstacles);
@@ -143,11 +152,9 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         return;
 
     Mat wrapped_frame;
+    Mat obs_frame;
     vector<Vec4i> lines;
     vector<Point> points;
-    vector<Point> left_points;
-    vector<Point> right_points;
-    vector<Point> middle_points;
 
     static vector<Point> prev_left_points;
     static vector<Point> prev_right_points;
@@ -170,6 +177,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     middle_points = GetMiddlePoints(points, wrapped_frame.cols);
     middle_left = GetMiddleOfLeftRoad(left_points, middle_points);
     middle_right = GetMiddleOfRightRoad(right_points, middle_points);
+    obs_frame = DrawObsPoints(raw_obstacles);
 
     for (int i = 0; i < left_points.size(); i++)
     {
@@ -243,6 +251,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     imshow("frame", raw_frame);
     imshow("wrapped_frame", wrapped_frame);
+    imshow("Obs_frame", obs_frame);
     waitKey(1);
 }
 
@@ -486,9 +495,24 @@ std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int
     {
         if (point.y < 100)
             continue;
-        // Check if the point is within the middle region
+        // check if the point exist in the left and right region
+        for (const cv::Point &left_point : left_points)
+        {
+            if (point.x == left_point.x && point.y == left_point.y)
+            {
+                continue;
+            }
+        }
+        for (const cv::Point &right_point : right_points)
+        {
+            if (point.x == right_point.x && point.y == right_point.y)
+            {
+                continue;
+            }
+        }
         if (point.x >= min_x && point.x <= max_x)
         {
+
             if (middle_points.empty() || std::abs(point.x - point.x) <= 50)
             {
                 middle_points.push_back(point);
@@ -531,4 +555,34 @@ std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point> &rightP
     }
 
     return middleOfRightRoad;
+}
+
+Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
+{
+    Mat frame = Mat::zeros(800, 800, CV_8UC3);
+    // draw car in the middle
+    float car_x = 400;
+    float car_y = 700;
+
+    cv::rectangle(frame, cv::Point(car_x - 20, car_y - 20), cv::Point(car_x + 20, car_y + 20), cv::Scalar(0, 255, 0), 2);
+
+    for (int i = 0; i < points.size(); i++)
+    {
+        float obs_x = (points[i]->y * 10) + 400;
+        float obs_y = (points[i]->x * -10) + 700;
+        printf("raw obs: %f %f | frame obs: %f %f\n", points[i]->x, points[i]->y, obs_x, obs_y);
+        cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
+    }
+
+    for (int i = 0; i < middle_points.size(); i++)
+    {
+        cv::circle(frame, cv::Point(middle_points[i].x, middle_points[i].y), 5, cv::Scalar(255, 0, 0), -1);
+    }
+
+    // robot safe areas
+    float safe_angle = 10;
+    cv::line(frame, cv::Point(300, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
+    cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
+
+    return frame;
 }

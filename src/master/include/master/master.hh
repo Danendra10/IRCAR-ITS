@@ -6,6 +6,7 @@
 #include "geometry_msgs/Twist.h"
 #include "entity/entity.hh"
 #include "msg_collection/PointArray.h"
+#include "msg_collection/Obstacles.h"
 #include "sensor_msgs/JointState.h"
 #include <vector>
 
@@ -22,11 +23,13 @@ typedef struct general_data_tag
     CarPose car_pose;
     Target car_target;
     CarData car_data;
+    Obstacles obs_data;
 
     ros::Publisher pub_car_vel;
     ros::Subscriber sub_car_pose;
     ros::Subscriber sub_lines;
     ros::Subscriber sub_car_data;
+    ros::Subscriber sub_lidar_data;
     ros::Timer tim_60_hz;
 
     vector<Lane> left_lane;
@@ -47,6 +50,11 @@ general_data_t general_instance;
 //==============================================================================
 
 void CllbckTim60Hz(const ros::TimerEvent &event);
+
+void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
+{
+    
+}
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
 {

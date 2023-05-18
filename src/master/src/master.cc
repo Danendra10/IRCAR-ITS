@@ -101,15 +101,6 @@ void SimulatorState()
 
 void DecideCarTarget(general_data_ptr data)
 {
-    //     if (data->middle_left_target.size() > 0)
-    //         return;
-    //     if (data->middle_left_target[0].x == 0)
-    //         return;
-
-    //     data->car_target.x = data->middle_left_target[0].x;
-    //     data->car_target.y = data->middle_left_target[0].y;
-    //     data->car_target.th = atan2(data->car_target.y - data->car_pose.y, data->car_target.x - data->car_pose.x);
-    //     printf("car_target.th: %f\n", data->car_target.th);
     if (data->middle_lane.size() < 0)
         return;
     if (data->middle_lane[0].x == 0)
