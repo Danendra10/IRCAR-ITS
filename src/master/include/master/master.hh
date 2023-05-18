@@ -6,6 +6,7 @@
 #include "geometry_msgs/Twist.h"
 #include "entity/entity.hh"
 #include "msg_collection/PointArray.h"
+#include "sensor_msgs/JointState.h"
 #include <vector>
 
 #include <termios.h>
@@ -18,14 +19,16 @@ using namespace std;
 typedef struct general_data_tag
 {
     Velocity car_vel;
-    ros::Publisher pub_car_vel;
+    CarPose car_pose;
+    Target car_target;
+    CarData car_data;
 
+    ros::Publisher pub_car_vel;
     ros::Subscriber sub_car_pose;
     ros::Subscriber sub_lines;
-
+    ros::Subscriber sub_car_data;
     ros::Timer tim_60_hz;
 
-    CarPose car_pose;
     vector<Lane> left_lane;
     vector<Lane> middle_lane;
     vector<Lane> right_lane;
@@ -44,6 +47,16 @@ general_data_t general_instance;
 //==============================================================================
 
 void CllbckTim60Hz(const ros::TimerEvent &event);
+
+void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
+{
+    general_instance->car_data.rear_left_wheel_joint = msg->position[0];
+    general_instance->car_data.rear_right_wheel_joint = msg->position[1];
+    general_instance->car_data.front_right_wheel_joint = msg->position[4];
+    general_instance->car_data.front_left_wheel_joint = msg->position[5];
+
+    general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
+}
 
 void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 {
@@ -106,8 +119,9 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 void GetKeyboard();
 void SimulatorState();
 void MoveRobot(float vx_, float vz_);
-void RobotMovement(TargetPtr target, VelocityPtr vel);
 void TransmitData(general_data_ptr data);
+void RobotMovement(general_data_ptr data);
+void DecideCarTarget(general_data_ptr data);
 
 int8_t kbhit()
 {

@@ -9,6 +9,7 @@
 #include "entity/entity.hh"
 #include "geometry_msgs/Point.h"
 #include "msg_collection/PointArray.h"
+#include "msg_collection/Obstacles.h"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
@@ -23,6 +24,7 @@ using namespace cv;
 image_transport::Subscriber sub_raw_frame;
 
 ros::Subscriber sub_odom;
+ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
@@ -42,11 +44,14 @@ boost::mutex mutex_raw_frame;
 uint8_t validators = 0b000;
 std::chrono::time_point<std::chrono::system_clock> curr_time;
 CarPose car_pose;
+vector<Obstacles> raw_obstacles;
+vector<Obstacles> obstacles;
 
 //============================================================
 
 void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
 void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg, vector<ObstaclesPtr> obstacles, vector<ObstaclesPtr> raw_obstacles);
 
 //============================================================
 
@@ -115,6 +120,23 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     pub_car_pose.publish(car_pose_msg);
 }
 
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg, vector<ObstaclesPtr> obstacles, vector<ObstaclesPtr> raw_obstacles)
+{
+    obstacles.clear();
+    for (int i = 0; i < msg->x.size(); i++)
+    {
+        ObstaclesPtr obstacle(new Obstacles);
+        obstacle->x = msg->x[i];
+        obstacle->y = msg->y[i];
+        obstacles.push_back(obstacle);
+
+        ObstaclesPtr raw_obstacle(new Obstacles);
+        raw_obstacle->x = msg->x[i] - car_pose.x;
+        raw_obstacle->y = msg->y[i] - car_pose.y;
+        raw_obstacles.push_back(raw_obstacle);
+    }
+}
+
 void Tim30HzCllbck(const ros::TimerEvent &event)
 {
     if (validators != 0b001)
@@ -126,6 +148,11 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     vector<Point> left_points;
     vector<Point> right_points;
     vector<Point> middle_points;
+
+    static vector<Point> prev_left_points;
+    static vector<Point> prev_right_points;
+    static vector<Point> prev_middle_points;
+
     vector<Point> middle_left;
     vector<Point> middle_right;
 
@@ -313,7 +340,7 @@ std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i> &lines)
         if (p1.x <= min_x && p2.x <= min_x && p1.x <= 300 && p2.x <= 300)
         {
             // Check if the line is close to the previous line
-            if (left_lines.empty() || std::abs(p1.x - min_x) <= 100)
+            if (left_lines.empty() || std::abs(p1.x - min_x) <= 50)
             {
                 left_lines.push_back(line);
                 min_x = std::min(p1.x, p2.x);
@@ -338,7 +365,7 @@ std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int fr
         if (p1.x >= max_x && p2.x >= max_x && p1.x >= frameWidth - 300 && p2.x >= frameWidth - 300)
         {
             // Check if the line is close to the previous line
-            if (right_lines.empty() || std::abs(p1.x - max_x) <= 100)
+            if (right_lines.empty() || std::abs(p1.x - max_x) <= 50)
             {
                 right_lines.push_back(line);
                 max_x = std::max(p1.x, p2.x);
@@ -363,7 +390,7 @@ std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int f
         // Check if the line is within the middle region
         if ((p1.x >= min_x && p1.x <= max_x) || (p2.x >= min_x && p2.x <= max_x))
         {
-            if (middle_lines.empty() || std::abs(p1.x - p2.x) <= 100)
+            if (middle_lines.empty() || std::abs(p1.x - p2.x) <= 50)
             {
                 middle_lines.push_back(line);
             }
@@ -408,7 +435,7 @@ std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point> &points)
 
     for (const cv::Point &point : points)
     {
-        if (point.y < 200)
+        if (point.y < 100)
             continue;
         // Check if the point is within the left region
         if (point.x <= min_x && point.x <= 300)
@@ -432,7 +459,7 @@ std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point> &points, int 
 
     for (const cv::Point &point : points)
     {
-        if (point.y < 200)
+        if (point.y < 100)
             continue;
         // Check if the point is within the right region
         if (point.x >= max_x && point.x >= frameWidth - 300)
@@ -457,7 +484,7 @@ std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int
 
     for (const cv::Point &point : points)
     {
-        if (point.y < 200)
+        if (point.y < 100)
             continue;
         // Check if the point is within the middle region
         if (point.x >= min_x && point.x <= max_x)

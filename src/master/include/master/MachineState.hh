@@ -65,6 +65,7 @@ enum
     BACKWARD = 2,
     TURN_LEFT = 3,
     TURN_RIGHT = 4,
+    AUTONOMOUS = 5,
 
     RESET = 0,
 };
