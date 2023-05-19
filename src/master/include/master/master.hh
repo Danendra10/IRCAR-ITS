@@ -23,6 +23,7 @@ typedef struct general_data_tag
     CarPose car_pose;
     Target car_target;
     CarData car_data;
+
     vector<Obstacles> raw_obs_data;
     vector<Obstacles> obs_data;
 
@@ -36,7 +37,6 @@ typedef struct general_data_tag
     vector<Lane> left_lane;
     vector<Lane> middle_lane;
     vector<Lane> right_lane;
-
     vector<Lane> middle_right_target;
     vector<Lane> middle_left_target;
 
@@ -51,6 +51,13 @@ typedef struct general_data_tag
 //==============================================================================
 
 general_data_t general_instance;
+
+/**
+ * 0b000 ==> !data valdi
+ * 0b001 ==> data vision valdi
+ * 0b011 ==> data lidar valdi
+ */
+uint8_t data_validator = 0b000;
 
 //==============================================================================
 
@@ -81,6 +88,9 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 
         general_instance.obs_status = 1;
     }
+
+    data_validator |= 0b010;
+    // printf("data validnya 1 %d\n", data_validator);
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -147,6 +157,9 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
         lane.y = msg->right_target_y[i];
         general_instance.middle_right_target.push_back(lane);
     }
+
+    data_validator |= 0b001;
+    // printf("data validnya %d\n", data_validator);
 }
 
 //==============================================================================

@@ -249,7 +249,9 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     pub_points.publish(points_msg);
 
-    imshow("frame", raw_frame);
+    // printf("%.2f", right_points[0].x);
+
+    // imshow("frame", raw_frame);
     imshow("wrapped_frame", wrapped_frame);
     imshow("Obs_frame", obs_frame);
     waitKey(1);

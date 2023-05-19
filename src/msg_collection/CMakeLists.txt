@@ -12,10 +12,17 @@ add_message_files(
     Obstacles.msg
 )
 
+
 generate_messages(
   DEPENDENCIES
   std_msgs
+  )
+  
+
+catkin_package(
+#  INCLUDE_DIRS include
 )
+
 
 include_directories(
 # include
