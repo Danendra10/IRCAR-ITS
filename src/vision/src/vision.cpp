@@ -1,3 +1,11 @@
+/**
+ * @copyright @Danendra10 & @isabellejt
+ * @brief This node will calculate the line of the road
+ *       and publish the point of the line
+ * @license IRIS
+ * TODO: #1 make the wrap based on the pdf that been approved by the Mr. Pandu @Danendra10
+ */
+
 #include "opencv2/opencv.hpp"
 #include "sensor_msgs/Image.h"
 #include <cv_bridge/cv_bridge.h>
@@ -208,8 +216,6 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         Point p = middle_right[i];
         circle(wrapped_frame, p, 5, Scalar(255, 0, 255), -1);
     }
-
-    circle(raw_frame, Point(0, 800), 5, Scalar(0, 0, 255), -1);
 
     msg_collection::PointArray points_msg;
     for (int i = 0; i < left_points.size(); i++)

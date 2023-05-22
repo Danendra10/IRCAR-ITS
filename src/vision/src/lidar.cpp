@@ -1,3 +1,11 @@
+/**
+ * @copyright @isabellejt
+ * @brief This node will calculate the line of the road
+ *       and publish the point of the line
+ * @license IRIS
+ * TODO: #2 Find a way to convert the detected obstacle to the pixel of frame @isabellejt
+ */
+
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
@@ -54,7 +62,6 @@ int main(int argc, char **argv)
 
 void CllbckMainTimer(const ros::TimerEvent &event)
 {
-    
 }
 
 void SubOdomCllbck(const nav_msgs::OdometryConstPtr &odom)
