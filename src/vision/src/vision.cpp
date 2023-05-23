@@ -6,19 +6,7 @@
  * TODO: #1 make the wrap based on the pdf that been approved by the Mr. Pandu @Danendra10
  */
 
-#include "opencv2/opencv.hpp"
-#include "sensor_msgs/Image.h"
-#include <cv_bridge/cv_bridge.h>
-#include <ros/ros.h>
-#include "image_transport/image_transport.h"
-#include <chrono>
-#include <vector>
-#include "nav_msgs/Odometry.h"
-#include "entity/entity.hh"
-#include "geometry_msgs/Point.h"
-#include "msg_collection/PointArray.h"
-#include "msg_collection/Obstacles.h"
-#include "imp/imph.hh"
+#include "vision/vision.hh"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
@@ -172,6 +160,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     line(resized, Point(vanishing_point_x + 10, vanishing_point_y), Point(vanishing_point_x - 10, vanishing_point_y), Scalar(0, 0, 255));
     line(resized, Point(vanishing_point_x, vanishing_point_y + 10), Point(vanishing_point_x, vanishing_point_y - 10), Scalar(0, 0, 255));
+
     imshow("resize", resized);
     imshow("remap", imremapped);
 
@@ -184,12 +173,24 @@ void Init()
 {
     curr_time = std::chrono::system_clock::now();
 
+    printf("prev vanishing_point_x : %d %d\n", vanishing_point_x, vanishing_point_y);
+
     vanishing_point_x = SRC_RESIZED_WIDTH >> 1;
     vanishing_point_y = SRC_RESIZED_HEIGHT >> 1;
+
+    printf("vanishing_point_x : %d %d\n", vanishing_point_x, vanishing_point_y);
 
     ipm_table = new int[DST_REMAPPED_WIDTH * DST_REMAPPED_HEIGHT];
 
     BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, vanishing_point_x, vanishing_point_y, ipm_table);
+
+    unsigned int a = 12;
+
+    printf("init a : %d\n", a);
+
+    a = DivideBy3(a);
+
+    printf("final a : %d\n", a);
 }
 
 Mat ToWrappedFrame(Mat raw_frame)

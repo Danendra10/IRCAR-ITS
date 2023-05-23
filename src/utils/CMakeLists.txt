@@ -16,3 +16,8 @@ add_library(entity_lib
   src/entity.cc
 )
 target_link_libraries(entity_lib ${catkin_LIBRARIES})
+
+add_library(math_lib
+  src/math.cc
+)
+target_link_libraries(math_lib ${catkin_LIBRARIES})
