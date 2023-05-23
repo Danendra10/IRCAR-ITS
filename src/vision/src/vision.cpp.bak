@@ -18,7 +18,6 @@
 #include "geometry_msgs/Point.h"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
-#include "imp/imph.hh"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
@@ -61,11 +60,6 @@ vector<Point> left_points;
 vector<Point> right_points;
 vector<Point> middle_points;
 
-Mat wrapped_frame;
-Mat resized;
-Mat grayresized;
-Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
-
 //============================================================
 
 void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
@@ -104,7 +98,7 @@ int main(int argc, char **argv)
     image_transport::ImageTransport IT(NH);
     ros::MultiThreadedSpinner MTS(0);
 
-    Init();
+    ROS_INFO("HALO\n");
 
     tim_30hz = NH.createTimer(ros::Duration(1.0 / 30.0), Tim30HzCllbck);
 
@@ -165,16 +159,105 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     if (validators != 0b001)
         return;
 
-    resize(raw_frame, resized, Size(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT));
-    cvtColor(resized, grayresized, COLOR_BGR2GRAY);
+    Mat wrapped_frame;
+    Mat obs_frame;
+    vector<Vec4i> lines;
+    vector<Point> points;
 
-    InversePerspectiveMapping(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, grayresized.data, ipm_table, imremapped.data);
+    static vector<Point> prev_left_points;
+    static vector<Point> prev_right_points;
+    static vector<Point> prev_middle_points;
 
-    line(resized, Point(vanishing_point_x + 10, vanishing_point_y), Point(vanishing_point_x - 10, vanishing_point_y), Scalar(0, 0, 255));
-    line(resized, Point(vanishing_point_x, vanishing_point_y + 10), Point(vanishing_point_x, vanishing_point_y - 10), Scalar(0, 0, 255));
-    imshow("resize", resized);
-    imshow("remap", imremapped);
+    vector<Point> middle_left;
+    vector<Point> middle_right;
 
+    vector<Vec4i> left_lines;
+    vector<Vec4i> right_lines;
+    vector<Vec4i> middle_lines;
+
+    vector<Point> left_extrapolation_points;
+    vector<Point> right_extrapolation_points;
+
+    wrapped_frame = ToWrappedFrame(raw_frame);
+    points = GetPoints(wrapped_frame);
+    left_points = GetLeftPoints(points);
+    right_points = GetRightPoints(points, wrapped_frame.cols);
+    middle_points = GetMiddlePoints(points, wrapped_frame.cols);
+    middle_left = GetMiddleOfLeftRoad(left_points, middle_points);
+    middle_right = GetMiddleOfRightRoad(right_points, middle_points);
+    obs_frame = DrawObsPoints(obstacles);
+
+    for (int i = 0; i < left_points.size(); i++)
+    {
+        Point p = left_points[i];
+        circle(wrapped_frame, p, 5, Scalar(0, 0, 255), -1);
+    }
+
+    for (int i = 0; i < right_points.size(); i++)
+    {
+        Point p = right_points[i];
+        circle(wrapped_frame, p, 5, Scalar(0, 255, 0), -1);
+    }
+
+    for (int i = 0; i < middle_points.size(); i++)
+    {
+        Point p = middle_points[i];
+        circle(wrapped_frame, p, 5, Scalar(255, 0, 0), -1);
+    }
+
+    for (int i = 0; i < middle_left.size(); i++)
+    {
+        Point p = middle_left[i];
+        circle(wrapped_frame, p, 5, Scalar(255, 255, 0), -1);
+    }
+
+    for (int i = 0; i < middle_right.size(); i++)
+    {
+        Point p = middle_right[i];
+        circle(wrapped_frame, p, 5, Scalar(255, 0, 255), -1);
+    }
+
+    msg_collection::PointArray points_msg;
+    for (int i = 0; i < left_points.size(); i++)
+    {
+        Point p = left_points[i];
+        points_msg.left_lane_x.push_back(p.x);
+        points_msg.left_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < right_points.size(); i++)
+    {
+        Point p = right_points[i];
+        points_msg.right_lane_x.push_back(p.x);
+        points_msg.right_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_points.size(); i++)
+    {
+        Point p = middle_points[i];
+        points_msg.middle_lane_x.push_back(p.x);
+        points_msg.middle_lane_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_left.size(); i++)
+    {
+        Point p = middle_left[i];
+        points_msg.left_target_x.push_back(p.x);
+        points_msg.left_target_y.push_back(p.y);
+    }
+
+    for (int i = 0; i < middle_right.size(); i++)
+    {
+        Point p = middle_right[i];
+        points_msg.right_target_x.push_back(p.x);
+        points_msg.right_target_y.push_back(p.y);
+    }
+
+    pub_points.publish(points_msg);
+
+    imshow("frame", raw_frame);
+    imshow("wrapped_frame", wrapped_frame);
+    imshow("Obs_frame", obs_frame);
     waitKey(1);
 }
 
@@ -183,13 +266,6 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 void Init()
 {
     curr_time = std::chrono::system_clock::now();
-
-    vanishing_point_x = SRC_RESIZED_WIDTH >> 1;
-    vanishing_point_y = SRC_RESIZED_HEIGHT >> 1;
-
-    ipm_table = new int[DST_REMAPPED_WIDTH * DST_REMAPPED_HEIGHT];
-
-    BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, vanishing_point_x, vanishing_point_y, ipm_table);
 }
 
 Mat ToWrappedFrame(Mat raw_frame)
