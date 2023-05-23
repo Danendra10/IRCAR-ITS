@@ -7,9 +7,12 @@ catkin_package(
   INCLUDE_DIRS include  
 )
 
+find_package(OpenCV REQUIRED)
+
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 add_library(entity_lib
@@ -20,4 +23,4 @@ target_link_libraries(entity_lib ${catkin_LIBRARIES})
 add_library(math_lib
   src/math.cc
 )
-target_link_libraries(math_lib ${catkin_LIBRARIES})
+target_link_libraries(math_lib ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
