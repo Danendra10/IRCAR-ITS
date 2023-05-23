@@ -77,16 +77,22 @@ void SubOdomCllbck(const nav_msgs::OdometryConstPtr &odom)
 
 void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
 {
-    msg_collection::Obstacles obstacles;
+    msg_collection::Obstacles raw_obstacles;
     ranges = msg->ranges;
     for (int i = 0; i < ranges.size(); i++)
     {
         float curr_range = ranges[i];
+        float obs_x, obs_y;
         if (ranges[i] < 80)
         {
-            obstacles.x.push_back(car_pose.y + sin(DEG2RAD(i)) * curr_range);
-            obstacles.y.push_back(car_pose.x + cos(DEG2RAD(i)) * curr_range);
+            // based on car perspective
+            obs_y = cos(DEG2RAD(i)) * curr_range;
+            obs_x = sin(DEG2RAD(i)) * curr_range;
+
+            printf("obs x %.2f y %.2f\n", obs_x, obs_y);
+            raw_obstacles.x.push_back(obs_x);
+            raw_obstacles.y.push_back(obs_y);
         }
     }
-    pub_lidar_data.publish(obstacles);
+    pub_lidar_data.publish(raw_obstacles);
 }

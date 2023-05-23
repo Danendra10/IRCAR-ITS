@@ -185,7 +185,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     middle_points = GetMiddlePoints(points, wrapped_frame.cols);
     middle_left = GetMiddleOfLeftRoad(left_points, middle_points);
     middle_right = GetMiddleOfRightRoad(right_points, middle_points);
-    obs_frame = DrawObsPoints(raw_obstacles);
+    obs_frame = DrawObsPoints(obstacles);
 
     for (int i = 0; i < left_points.size(); i++)
     {
@@ -272,10 +272,10 @@ void Init()
 
 Mat ToWrappedFrame(Mat raw_frame)
 {
-    Point pt_a = Point(2, 414);
+    Point pt_a = Point(2, 450);
     Point pt_b = Point(2, 670);
     Point pt_c = Point(798, 670);
-    Point pt_d = Point(798, 414);
+    Point pt_d = Point(798, 450);
 
     float width_AD = sqrt(pow(pt_a.x - pt_d.x, 2) + pow(pt_a.y - pt_d.y, 2));
     float width_BC = sqrt(pow(pt_b.x - pt_c.x, 2) + pow(pt_b.y - pt_c.y, 2));
@@ -576,8 +576,12 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
 
     for (int i = 0; i < points.size(); i++)
     {
-        float obs_x = (points[i]->y * 10) + 400;
-        float obs_y = (points[i]->x * -10) + 700;
+        // float obs_x = (points[i]->y * 10) + 400;
+        // float obs_y = (points[i]->x * -10) + 700;
+        float obs_y = (points[i]->x * 8 + car_x);
+        float obs_x = (points[i]->y * 8 + car_y);
+
+        printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
         cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
     }
 
@@ -587,9 +591,9 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     }
 
     // robot safe areas
-    float safe_angle = 10;
-    cv::line(frame, cv::Point(300, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
-    cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
+    // float safe_angle = 10;
+    // cv::line(frame, cv::Point(300, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
+    // cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
 
     return frame;
 }
