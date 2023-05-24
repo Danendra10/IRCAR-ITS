@@ -38,11 +38,16 @@ public:
     vector<Vec4i> hierarchy;
     RotatedRect rotated_rect;
 
+    vector<Point> lanes;
+    vector<Point> left_lane;
+    vector<Point> right_lane;
+    vector<Point> middle_lane;
+
     LaneDetect(Mat startFrame)
     {
         // currFrame = startFrame;                                    //if image has to be processed at original size
 
-        currFrame = Mat(320, 480, CV_8UC1, 0.0);         // initialised the image size to 320x480
+        currFrame = Mat(800, 800, CV_8UC1, 0.0);         // initialised the image size to 320x480
         resize(startFrame, currFrame, currFrame.size()); // resize the input to required size
 
         temp = Mat(currFrame.rows, currFrame.cols, CV_8UC1, 0.0);  // stores possible lane markings
@@ -61,10 +66,10 @@ public:
         vertical_right = 3 * currFrame.cols / 5;
         vertical_top = 2 * currFrame.rows / 3;
 
-        namedWindow("lane", 2);
-        namedWindow("midstep", 2);
-        namedWindow("currframe", 2);
-        namedWindow("laneBlobs", 2);
+        // namedWindow("lane", 2);
+        // namedWindow("midstep", 2);
+        // namedWindow("currframe", 2);
+        // namedWindow("laneBlobs", 2);
 
         getLane();
     }
@@ -88,7 +93,7 @@ public:
                 temp2.at<uchar>(i, j) = 0;
             }
 
-        imshow("currframe", currFrame);
+        // imshow("currframe", currFrame);
         blobRemoval();
     }
 
@@ -181,9 +186,9 @@ public:
                 }
             }
         }
-        imshow("midstep", temp);
-        imshow("laneBlobs", temp2);
-        imshow("lane", currFrame);
+        // imshow("midstep", temp);
+        // imshow("laneBlobs", temp2);
+        // imshow("lane", currFrame);
     }
 
     void nextFrame(Mat &nxt)
@@ -199,4 +204,72 @@ public:
         return temp2;
     }
 
-}; // end of class LaneDetect
+    vector<Point> getLanes()
+    {
+        vector<Point> lanePoints;
+        for (int i = vanishingPt; i < currFrame.rows; i++)
+            for (int j = 0; j < currFrame.cols; j++)
+                if (temp2.at<uchar>(i, j) == 255)
+                    lanePoints.push_back(Point(j, i));
+        this->lanes = lanePoints;
+        return lanePoints;
+    }
+
+    vector<Point> getLeftLane()
+    {
+        // detect from left bottom to vanishing point, the first detected lane is the left lane
+        vector<Point> leftLane;
+        for (int i = vanishingPt; i < temp2.rows; i++)
+            for (int j = 0; j < temp2.cols; j++)
+            {
+                if (temp2.at<uchar>(i, j) == 255)
+                {
+                    leftLane.push_back(Point(j, i));
+                    if (abs(leftLane.back().x - j) > 100)
+                        break;
+                    break;
+                }
+                if (j >= temp2.cols / 2)
+                    break;
+            }
+        this->left_lane = leftLane;
+        return leftLane;
+    }
+
+    vector<Point> getRightLane()
+    {
+        vector<Point> rightLane;
+        for (int i = vanishingPt; i < temp2.rows; i++)
+            for (int j = temp2.cols; j > 0; j--)
+            {
+                if (temp2.at<uchar>(i, j) == 255)
+                {
+                    rightLane.push_back(Point(j, i));
+                    if (abs(rightLane.back().x - j) > 100)
+                        break;
+                    break;
+                }
+                if (j <= temp2.cols / 2)
+                    break;
+            }
+
+        this->right_lane = rightLane;
+        return rightLane;
+    }
+
+    vector<Point> calcMiddleLane()
+    {
+        vector<Point> left = this->left_lane;
+        vector<Point> right = this->right_lane;
+        vector<Point> middle;
+
+        for (int i = 0; i < left.size() && i < right.size(); i++)
+        {
+            Point mid = Point((left[i].x + right[i].x) / 2, (left[i].y + right[i].y) / 2);
+            printf("mid: %d %d\n", mid.x, mid.y);
+            middle.push_back(mid);
+            this->middle_lane.push_back(mid);
+        }
+        return middle;
+    }
+};

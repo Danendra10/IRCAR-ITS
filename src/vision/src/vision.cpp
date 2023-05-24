@@ -161,8 +161,42 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     line(resized, Point(vanishing_point_x + 10, vanishing_point_y), Point(vanishing_point_x - 10, vanishing_point_y), Scalar(0, 0, 255));
     line(resized, Point(vanishing_point_x, vanishing_point_y + 10), Point(vanishing_point_x, vanishing_point_y - 10), Scalar(0, 0, 255));
 
-    imshow("resize", resized);
-    imshow("remap", imremapped);
+    LaneDetect detect(imremapped);
+
+    // Mat lane;
+
+    detect.nextFrame(imremapped);
+
+    Mat final_lane = detect.getResult();
+
+    vector<Point> lanes = detect.getLanes();
+
+    Mat lane_points = Mat::zeros(final_lane.size(), CV_8UC3);
+
+    for (int i = 0; i < lanes.size(); i++)
+    {
+        circle(lane_points, lanes[i], 3, Scalar(0, 0, 255), -1);
+    }
+
+    vector<Point> left_lane = detect.getLeftLane();
+
+    for (int i = 0; i < left_lane.size(); i++)
+    {
+        circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
+    }
+
+    vector<Point> right_lane = detect.getRightLane();
+
+    for (int i = 0; i < right_lane.size(); i++)
+    {
+        circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
+    }
+
+    vector<Point> middle_lane = detect.calcMiddleLane();
+
+    imshow("final_lane", raw_frame);
+    imshow("imremaaped", imremapped);
+    imshow("lane_points", lane_points);
 
     waitKey(1);
 }
