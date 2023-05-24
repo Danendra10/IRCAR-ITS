@@ -63,7 +63,7 @@ vector<Point> middle_points;
 Mat wrapped_frame;
 Mat resized;
 Mat grayresized;
-Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
+// Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
 
 PolynomialRegression polynom(DEGREE);
 
