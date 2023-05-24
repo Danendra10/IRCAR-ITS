@@ -15,6 +15,7 @@
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
 #include "logger/logger.hh"
+#include "pinhole/pinhole.hh"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)

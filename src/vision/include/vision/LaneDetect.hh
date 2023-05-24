@@ -1,3 +1,7 @@
+/**
+ * To be honest, i dont even fucking know what this code does
+ * i got it from github but i forgot who's code is this... i just modify the code a bit
+ */
 #include "opencv2/opencv.hpp"
 #include <vector>
 
