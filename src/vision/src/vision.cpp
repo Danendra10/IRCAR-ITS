@@ -3,7 +3,7 @@
  * @brief This node will calculate the line of the road
  *       and publish the point of the line
  * @license IRIS
- * TODO: #1 make the wrap based on the pdf that been approved by the Mr. Pandu @Danendra10
+ *
  */
 
 #include "vision/vision.hh"
@@ -193,6 +193,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
+
+    for (int i = 0; i < middle_lane.size(); i++)
+    {
+        Logger(RED, "middle_lane : %d %d\n", middle_lane[i].x, middle_lane[i].y);
+        circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
+    }
 
     imshow("final_lane", raw_frame);
     imshow("imremaaped", imremapped);

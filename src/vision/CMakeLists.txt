@@ -36,7 +36,7 @@ catkin_install_python(PROGRAMS
 
 
 add_executable(vision_cpp src/vision.cpp)
-target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib)
+target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
 
 add_executable(lidar src/lidar.cpp)
 target_link_libraries(lidar ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib)

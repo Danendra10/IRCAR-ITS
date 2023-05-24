@@ -14,5 +14,6 @@
 #include "imp/imph.hh"
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
+#include "logger/logger.hh"
 
 #endif
