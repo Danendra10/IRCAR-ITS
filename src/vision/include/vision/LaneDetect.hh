@@ -266,7 +266,6 @@ public:
         for (int i = 0; i < left.size() && i < right.size(); i++)
         {
             Point mid = Point((left[i].x + right[i].x) / 2, (left[i].y + right[i].y) / 2);
-            printf("mid: %d %d\n", mid.x, mid.y);
             middle.push_back(mid);
             this->middle_lane.push_back(mid);
         }

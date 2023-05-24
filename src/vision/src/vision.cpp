@@ -8,83 +8,6 @@
 
 #include "vision/vision.hh"
 
-#define RAD2DEG(rad) ((rad)*180.0 / M_PI)
-#define DEG2RAD(deg) ((deg)*M_PI / 180.0)
-
-//============================================================
-
-using namespace std;
-using namespace cv;
-
-//============================================================
-
-image_transport::Subscriber sub_raw_frame;
-
-ros::Subscriber sub_odom;
-ros::Subscriber sub_lidar_data;
-
-ros::Publisher pub_car_pose;
-ros::Publisher pub_points;
-
-ros::Timer tim_30hz;
-
-//============================================================
-
-Mat raw_frame = Mat::zeros(800, 800, CV_8UC3);
-
-//============================================================
-
-boost::mutex mutex_raw_frame;
-
-//============================================================
-
-uint8_t validators = 0b000;
-std::chrono::time_point<std::chrono::system_clock> curr_time;
-CarPose car_pose;
-
-vector<ObstaclesPtr> raw_obstacles;
-vector<ObstaclesPtr> obstacles;
-
-vector<Point> left_points;
-vector<Point> right_points;
-vector<Point> middle_points;
-
-Mat wrapped_frame;
-Mat resized;
-Mat grayresized;
-Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
-
-//============================================================
-
-void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
-void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
-
-//============================================================
-
-void Tim30HzCllbck(const ros::TimerEvent &event);
-
-//============================================================
-
-void Init();
-Mat ToWrappedFrame(Mat raw_frame);
-vector<Point> GetPoints(Mat wrapped_frame);
-std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point> &points);
-std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddleOfLeftRoad(const std::vector<cv::Point> &leftPoints, const std::vector<cv::Point> &middlePoints);
-std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point> &rightPoints, const std::vector<cv::Point> &middlePoints);
-
-Mat DrawObsPoints(const vector<ObstaclesPtr> &points);
-
-std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i> &lines);
-std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, const std::vector<cv::Vec4i> &middleLines);
-cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
-
-//============================================================
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vision");
@@ -173,11 +96,6 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     Mat lane_points = Mat::zeros(final_lane.size(), CV_8UC3);
 
-    for (int i = 0; i < lanes.size(); i++)
-    {
-        circle(lane_points, lanes[i], 3, Scalar(0, 0, 255), -1);
-    }
-
     vector<Point> left_lane = detect.getLeftLane();
 
     for (int i = 0; i < left_lane.size(); i++)
@@ -193,15 +111,35 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
+    vector<double> middle_lane_x;
+    vector<double> middle_lane_y;
 
     for (int i = 0; i < middle_lane.size(); i++)
     {
-        Logger(RED, "middle_lane : %d %d\n", middle_lane[i].x, middle_lane[i].y);
         circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
+        middle_lane_x.push_back(middle_lane[i].x);
+        middle_lane_y.push_back(middle_lane[i].y);
     }
 
-    imshow("final_lane", raw_frame);
-    imshow("imremaaped", imremapped);
+    polynom.fit(middle_lane_x, middle_lane_y);
+
+    for (int i = 0; i < 800; i++)
+    {
+        double x = i;
+        double y = polynom.predict(x);
+        circle(lane_points, Point(x, y), 3, Scalar(0, 0, 255), -1);
+    }
+
+    vector<double> weight = polynom.getW();
+
+    double a = weight[0];
+    double b = weight[1];
+    double c = weight[2];
+
+    putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
+    Logger(BLUE, "Equation %f x^2 + %f x + %f\n", a, b, c);
+
+    imshow("mapped", imremapped);
     imshow("lane_points", lane_points);
 
     waitKey(1);

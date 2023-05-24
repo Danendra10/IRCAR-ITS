@@ -76,3 +76,8 @@ void PolynomialRegression::print()
     }
     cout << endl;
 }
+
+vector<double> PolynomialRegression::getW()
+{
+    return w;
+}

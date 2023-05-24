@@ -18,6 +18,7 @@ public:
     void fit(const vector<double> &x, const vector<double> &y);
     double predict(double x);
     void print();
+    vector<double> getW();
 
 private:
     int degree;
