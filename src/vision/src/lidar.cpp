@@ -28,7 +28,7 @@ CarPose car_pose;
 
 //============================================================
 
-ros::Timer tim_15_hz;
+ros::Timer tim_50_hz;
 
 ros::Subscriber sub_odom;
 ros::Subscriber sub_lidar;
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::MultiThreadedSpinner MTS;
 
-    tim_15_hz = nh.createTimer(ros::Duration(1.0 / 15.0), CllbckMainTimer);
+    tim_50_hz = nh.createTimer(ros::Duration(1.0 / 50.0), CllbckMainTimer);
 
     sub_odom = nh.subscribe("/catvehicle/odom", 1, SubOdomCllbck);
     sub_lidar = nh.subscribe("/catvehicle/front_laser_points", 1, SubLidarCllbck);

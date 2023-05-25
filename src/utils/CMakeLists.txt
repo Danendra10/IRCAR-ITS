@@ -29,3 +29,14 @@ add_library(logger_lib
   src/logger.cc
 )
 target_link_libraries(logger_lib ${catkin_LIBRARIES})
+
+
+add_library(pid_lib
+  src/pid.cc
+)
+target_link_libraries(pid_lib ${catkin_LIBRARIES})
+
+add_library(potential_field_lib
+  src/potential_field.cc
+)
+target_link_libraries(potential_field_lib ${catkin_LIBRARIES})

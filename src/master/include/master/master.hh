@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 
 #include "master/MachineState.hh"
+#include "motion/motion.hh"
 
 using namespace std;
 
