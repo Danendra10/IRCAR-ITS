@@ -76,60 +76,78 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     if (validators != 0b001)
         return;
 
-    rectangle(raw_frame, Rec, Scalar(0, 0, 255), 2);
-    source = raw_frame(Rec);
+    resize(raw_frame, resized, Size(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT));
+    cvtColor(resized, grayresized, COLOR_BGR2GRAY);
 
-    resize(source, source, Size(FRAME_WIDTH, FRAME_HEIGHT));
+    InversePerspectiveMapping(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, grayresized.data, ipm_table, imremapped.data);
 
-    double focal_length, dist, alpha, beta, gamma, f;
+    Mat imremapped_line;
 
-    alpha = ((double)alpha_ - 90) * PI / 180;
-    beta = ((double)beta_ - 90) * PI / 180;
-    gamma = ((double)gamma_ - 90) * PI / 180;
-    dist = (double)dist_;
-    focal_length = (double)FOCAL_LENGTH;
+    imremapped_line = DrawLineEachMeter(imremapped, 1.0);
 
-    Size image_size = source.size();
-    double w = (double)image_size.width, h = (double)image_size.height;
+    line(resized, Point(vanishing_point_x + 10, vanishing_point_y), Point(vanishing_point_x - 10, vanishing_point_y), Scalar(0, 0, 255));
+    line(resized, Point(vanishing_point_x, vanishing_point_y + 10), Point(vanishing_point_x, vanishing_point_y - 10), Scalar(0, 0, 255));
 
-    Mat A1 = (Mat_<float>(4, 3) << 1, 0, -w / 2,
-              0, 1, -h / 2,
-              0, 0, 0,
-              0, 0, 1);
+    LaneDetect detect(imremapped);
 
-    Mat RX = (Mat_<float>(4, 4) << 1, 0, 0, 0,
-              0, cos(alpha), -sin(alpha), 0,
-              0, sin(alpha), cos(alpha), 0,
-              0, 0, 0, 1);
+    // Mat lane;
 
-    Mat RY = (Mat_<float>(4, 4) << cos(beta), 0, -sin(beta), 0,
-              0, 1, 0, 0,
-              sin(beta), 0, cos(beta), 0,
-              0, 0, 0, 1);
+    detect.nextFrame(imremapped);
 
-    Mat RZ = (Mat_<float>(4, 4) << cos(gamma), -sin(gamma), 0, 0,
-              sin(gamma), cos(gamma), 0, 0,
-              0, 0, 1, 0,
-              0, 0, 0, 1);
+    Mat final_lane = detect.getResult();
 
-    Mat R = RX * RY * RZ;
+    vector<Point> lanes = detect.getLanes();
 
-    Mat T = (Mat_<float>(4, 4) << 1, 0, 0, 0,
-             0, 1, 0, 0,
-             0, 0, 1, dist,
-             0, 0, 0, 1);
+    Mat lane_points = Mat::zeros(final_lane.size(), CV_8UC3);
 
-    Mat K = (Mat_<float>(3, 4) << focal_length, 0, w / 2, 0,
-             0, focal_length, h / 2, 0,
-             0, 0, 1, 0);
+    vector<Point> left_lane = detect.getLeftLane();
 
-    Mat transformationMat = K * (T * (R * A1));
+    for (int i = 0; i < left_lane.size(); i++)
+    {
+        circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
+    }
 
-    warpPerspective(source, dest, transformationMat, image_size, INTER_CUBIC | WARP_INVERSE_MAP);
+    vector<Point> right_lane = detect.getRightLane();
 
-    imshow("Result", dest);
+    for (int i = 0; i < right_lane.size(); i++)
+    {
+        circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
+    }
 
-    imshow("Original", raw_frame);
+    vector<Point> middle_lane = detect.calcMiddleLane();
+    vector<double> middle_lane_x;
+    vector<double> middle_lane_y;
+
+    for (int i = 0; i < middle_lane.size(); i++)
+    {
+        circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
+        middle_lane_x.push_back(middle_lane[i].x);
+        middle_lane_y.push_back(middle_lane[i].y);
+    }
+
+    polynom.fit(middle_lane_x, middle_lane_y);
+
+    for (int i = 0; i < 800; i++)
+    {
+        double x = i;
+        double y = polynom.predict(x);
+        circle(lane_points, Point(x, y), 3, Scalar(0, 0, 255), -1);
+    }
+
+    vector<double> weight = polynom.getW();
+
+    double a = weight[0];
+    double b = weight[1];
+    double c = weight[2];
+
+    putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
+    Logger(BLUE, "Equation %f x^2 + %f x + %f\n", a, b, c);
+
+    imshow("mapped", imremapped);
+    imshow("mapped_line", imremapped_line);
+    imshow("lane_points", lane_points);
+    imshow("raw", raw_frame);
+
     waitKey(1);
 }
 
@@ -137,12 +155,26 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
 void Init()
 {
-    namedWindow("Original", 1);
-    namedWindow("Result", 1);
-    createTrackbar("Alpha", "Result", &alpha_, 180);
-    createTrackbar("Beta", "Result", &beta_, 180);
-    createTrackbar("Gamma", "Result", &gamma_, 180);
-    createTrackbar("Distance", "Result", &dist_, 2000);
+    curr_time = std::chrono::system_clock::now();
+
+    printf("prev vanishing_point_x : %d %d\n", vanishing_point_x, vanishing_point_y);
+
+    vanishing_point_x = SRC_RESIZED_WIDTH >> 1;
+    vanishing_point_y = SRC_RESIZED_HEIGHT >> 1;
+
+    printf("vanishing_point_x : %d %d\n", vanishing_point_x, vanishing_point_y);
+
+    ipm_table = new int[DST_REMAPPED_WIDTH * DST_REMAPPED_HEIGHT];
+
+    BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, vanishing_point_x, vanishing_point_y, ipm_table);
+
+    unsigned int a = 12;
+
+    printf("init a : %d\n", a);
+
+    a = DivideBy3(a);
+
+    printf("final a : %d\n", a);
 }
 
 //==================>> NOT USED <<==================//

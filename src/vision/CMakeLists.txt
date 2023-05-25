@@ -40,3 +40,6 @@ target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_
 
 add_executable(lidar src/lidar.cpp)
 target_link_libraries(lidar ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib)
+
+add_executable(anderdevelop_cpp src/anderdevelop.cpp)
+target_link_libraries(anderdevelop_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
