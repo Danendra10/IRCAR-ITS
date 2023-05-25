@@ -19,6 +19,10 @@
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
+#define DST_REMAPPED_WIDTH 800
+#define DST_REMAPPED_HEIGHT 800
+#define SRC_RESIZED_WIDTH 800
+#define SRC_RESIZED_HEIGHT 800
 
 #define DEGREE 2
 

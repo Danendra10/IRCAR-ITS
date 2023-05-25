@@ -77,79 +77,75 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     if (validators != 0b001)
         return;
 
-    // resize(raw_frame, resized, Size(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT));
-    // cvtColor(resized, grayresized, COLOR_BGR2GRAY);
+    Mat frame_resize;
+    Mat frame_gray_resize;
+    Mat frame_remapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
 
-    // InversePerspectiveMapping(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, grayresized.data, ipm_table, imremapped.data);
+    resize(raw_frame, frame_resize, Size(cam_params.image_width, cam_params.image_height));
+    cvtColor(frame_resize, frame_gray_resize, COLOR_BGR2GRAY);
 
-    // Mat imremapped_line;
+    InversePerspective(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, frame_gray_resize.data, maptable, frame_remapped.data);
 
-    // imremapped_line = DrawLineEachMeter(imremapped, 1.0);
+    line(raw_frame, Point(cam_params.image_width >> 1, 0), Point(cam_params.image_width >> 1, cam_params.image_height), Scalar(0, 0, 255), 1);
+    line(raw_frame, Point(0, cam_params.image_height >> 1), Point(cam_params.image_width, cam_params.image_height >> 1), Scalar(0, 0, 255), 1);
 
-    // line(resized, Point(vanishing_point_x + 10, vanishing_point_y), Point(vanishing_point_x - 10, vanishing_point_y), Scalar(0, 0, 255));
-    // line(resized, Point(vanishing_point_x, vanishing_point_y + 10), Point(vanishing_point_x, vanishing_point_y - 10), Scalar(0, 0, 255));
+    LaneDetect detect(frame_remapped);
 
-    // LaneDetect detect(imremapped);
+    detect.nextFrame(frame_remapped);
 
-    // // Mat lane;
+    Mat final_lane = detect.getResult();
 
-    // detect.nextFrame(imremapped);
+    vector<Point> lanes = detect.getLanes();
 
-    // Mat final_lane = detect.getResult();
+    Mat lane_points = Mat::zeros(final_lane.size(), CV_8UC3);
 
-    // vector<Point> lanes = detect.getLanes();
+    vector<Point> left_lane = detect.getLeftLane();
 
-    // Mat lane_points = Mat::zeros(final_lane.size(), CV_8UC3);
+    for (int i = 0; i < left_lane.size(); i++)
+    {
+        circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
+    }
 
-    // vector<Point> left_lane = detect.getLeftLane();
+    vector<Point> right_lane = detect.getRightLane();
 
-    // for (int i = 0; i < left_lane.size(); i++)
-    // {
-    //     circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
-    // }
+    for (int i = 0; i < right_lane.size(); i++)
+    {
+        circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
+    }
 
-    // vector<Point> right_lane = detect.getRightLane();
+    vector<Point> middle_lane = detect.calcMiddleLane();
+    vector<double> middle_lane_x;
+    vector<double> middle_lane_y;
 
-    // for (int i = 0; i < right_lane.size(); i++)
-    // {
-    //     circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
-    // }
+    for (int i = 0; i < middle_lane.size(); i++)
+    {
+        circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
+        middle_lane_x.push_back(middle_lane[i].x);
+        middle_lane_y.push_back(middle_lane[i].y);
+    }
 
-    // vector<Point> middle_lane = detect.calcMiddleLane();
-    // vector<double> middle_lane_x;
-    // vector<double> middle_lane_y;
+    polynom.fit(middle_lane_x, middle_lane_y);
 
-    // for (int i = 0; i < middle_lane.size(); i++)
-    // {
-    //     circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
-    //     middle_lane_x.push_back(middle_lane[i].x);
-    //     middle_lane_y.push_back(middle_lane[i].y);
-    // }
+    for (int i = 0; i < 800; i++)
+    {
+        double x = i;
+        double y = polynom.predict(x);
+        circle(lane_points, Point(x, y), 3, Scalar(0, 0, 255), -1);
+    }
 
-    // polynom.fit(middle_lane_x, middle_lane_y);
+    vector<double> weight = polynom.getW();
 
-    // for (int i = 0; i < 800; i++)
-    // {
-    //     double x = i;
-    //     double y = polynom.predict(x);
-    //     circle(lane_points, Point(x, y), 3, Scalar(0, 0, 255), -1);
-    // }
+    double a = weight[0];
+    double b = weight[1];
+    double c = weight[2];
 
-    // vector<double> weight = polynom.getW();
+    putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
-    // double a = weight[0];
-    // double b = weight[1];
-    // double c = weight[2];
-
-    // putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
-    // Logger(BLUE, "Equation %f x^2 + %f x + %f\n", a, b, c);
-
-    // imshow("mapped", imremapped);
-    // imshow("mapped_line", imremapped_line);
-    // imshow("lane_points", lane_points);
-    imshow("raw", raw_frame);
-
-    // waitKey(1);
+    imshow("frame", raw_frame);
+    imshow("frame_remapped", frame_remapped);
+    imshow("final_lane", final_lane);
+    imshow("lane_points", lane_points);
+    waitKey(1);
 }
 
 //========================================================================================================================
@@ -158,6 +154,7 @@ void Init()
 {
     curr_time = std::chrono::system_clock::now();
     cam_params.horizontal_fov = 1.3962634; // rad
+    cam_params.vertical_fov = 2 * atan(tan(cam_params.horizontal_fov / 2) * 1);
     cam_params.image_width = 800;
     cam_params.image_height = 800;
     cam_params.near_clip = 0.1;
@@ -175,7 +172,8 @@ void Init()
     cam_params.camera_pos_y = 0;
     cam_params.camera_pos_z = 202.5;
     cam_params.cam_scale_x = (2 * cam_params.camera_pos_x * tan(cam_params.horizontal_fov / 2)) / cam_params.image_width;
-    cam_params.cam_scale_y = (2 * cam_params.camera_pos_y * tan(cam_params.horizontal_fov / 2)) / cam_params.image_width;
+    cam_params.cam_scale_y = (2 * cam_params.camera_pos_y * tan(cam_params.vertical_fov / 2)) / cam_params.image_height;
+    BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH >> 1, DST_REMAPPED_HEIGHT >> 1, maptable);
 }
 
 //==================>> NOT USED <<==================//

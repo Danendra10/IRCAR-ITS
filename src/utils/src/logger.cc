@@ -1,4 +1,11 @@
 #include "logger/logger.hh"
+#include <chrono>
+#include <thread>
+
+void Sleep(uint64_t msec)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(msec));
+}
 
 void Logger(const char *color, const char *msg, ...)
 {

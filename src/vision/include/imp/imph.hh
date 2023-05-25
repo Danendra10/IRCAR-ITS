@@ -8,6 +8,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include "entity/entity.hh"
+#include "logger/logger.hh"
 
 using namespace cv;
 
@@ -19,28 +20,28 @@ int vanishing_point_y;
 
 void LogParams()
 {
-    printf("\n                       Camera parameters                      \n");
-    printf("==============================================================\n");
-    printf("Horizontal FOV      : %f\n", cam_params.horizontal_fov);
-    printf("Image width         : %d\n", cam_params.image_width);
-    printf("Image height        : %d\n", cam_params.image_height);
-    printf("Near clip           : %f\n", cam_params.near_clip);
-    printf("Far clip            : %f\n", cam_params.far_clip);
-    printf("Noise mean          : %f\n", cam_params.noise_mean);
-    printf("Noise std dev       : %f\n", cam_params.noise_std_dev);
-    printf("Hack baseline       : %f\n", cam_params.hack_baseline);
-    printf("Distortion k1       : %f\n", cam_params.distortion_k1);
-    printf("Distortion k2       : %f\n", cam_params.distortion_k2);
-    printf("Distortion k3       : %f\n", cam_params.distortion_k3);
-    printf("Distortion t1       : %f\n", cam_params.distortion_t1);
-    printf("Distortion t2       : %f\n", cam_params.distortion_t2);
-    printf("Camera position x   : %f\n", cam_params.camera_pos_x);
-    printf("Camera position y   : %f\n", cam_params.camera_pos_y);
-    printf("Camera position z   : %f\n", cam_params.camera_pos_z);
-    printf("Camera scale x      : %f\n", cam_params.cam_scale_x);
-    printf("Camera scale y      : %f\n", cam_params.cam_scale_y);
-    printf("==============================================================\n");
-    printf("\n");
+    Logger(GREEN, "                    Camera parameters\n");
+    Logger(GREEN, "==============================================================\n");
+    Logger(GREEN, "Horizontal FOV      : %f\n", cam_params.horizontal_fov);
+    Logger(GREEN, "Vertical FOV        : %f\n", cam_params.vertical_fov);
+    Logger(GREEN, "Image width         : %d\n", cam_params.image_width);
+    Logger(GREEN, "Image height        : %d\n", cam_params.image_height);
+    Logger(GREEN, "Near clip           : %f\n", cam_params.near_clip);
+    Logger(GREEN, "Far clip            : %f\n", cam_params.far_clip);
+    Logger(GREEN, "Noise mean          : %f\n", cam_params.noise_mean);
+    Logger(GREEN, "Noise std dev       : %f\n", cam_params.noise_std_dev);
+    Logger(GREEN, "Hack baseline       : %f\n", cam_params.hack_baseline);
+    Logger(GREEN, "Distortion k1       : %f\n", cam_params.distortion_k1);
+    Logger(GREEN, "Distortion k2       : %f\n", cam_params.distortion_k2);
+    Logger(GREEN, "Distortion k3       : %f\n", cam_params.distortion_k3);
+    Logger(GREEN, "Distortion t1       : %f\n", cam_params.distortion_t1);
+    Logger(GREEN, "Distortion t2       : %f\n", cam_params.distortion_t2);
+    Logger(GREEN, "Camera position x   : %f\n", cam_params.camera_pos_x);
+    Logger(GREEN, "Camera position y   : %f\n", cam_params.camera_pos_y);
+    Logger(GREEN, "Camera position z   : %f\n", cam_params.camera_pos_z);
+    Logger(GREEN, "Camera scale x      : %f\n", cam_params.cam_scale_x);
+    Logger(GREEN, "Camera scale y      : %f\n", cam_params.cam_scale_y);
+    Logger(GREEN, "==============================================================\n");
 }
 
 /**
@@ -56,6 +57,90 @@ void LogParams()
  *
  * @brief Build a map table for the inverse perspective mapping
  */
+
+void BuildIPMTable(const int src_w, const int src_h, const int dst_w, const int dst_h, const int vanishing_pt_x, const int vanishing_pt_y, int *maptable)
+{
+    // float alpha = cam_params.horizontal_fov / 2;
+    // float gamma = -(float)(vanishing_pt_x - (src_w >> 1)) * alpha / (src_w >> 1);
+    // float theta = -(float)(vanishing_pt_y - (src_h >> 1)) * alpha / (src_h >> 1);
+
+    float alpha = 0.686111;
+    float gamma = 0;
+    float theta = 0.069444;
+
+    int front_map_pose_start = (dst_h >> 1);
+    int front_map_pose_end = front_map_pose_start + dst_h + 200;
+
+    int side_map_mid_pose = dst_w >> 1;
+
+    // int front_map_scale = cam_params.cam_scale_y;
+    // int side_map_scale = cam_params.cam_scale_x;
+
+    int front_map_scale = 2;
+    int side_map_scale = 0;
+
+    for (int y = 0; y < dst_w; ++y)
+    {
+        for (int x = front_map_pose_start; x < front_map_pose_end; ++x)
+        {
+            int index = y * dst_h + (x - front_map_pose_start);
+
+            int delta_x = front_map_scale * (front_map_pose_end - x - cam_params.camera_pos_x);
+            int delta_y = front_map_scale * (y - side_map_mid_pose - cam_params.camera_pos_y);
+
+            if (!delta_y)
+                maptable[index] = maptable[index - dst_h];
+            else
+            {
+                int u = (int)((atan(cam_params.camera_pos_z * sin(atan((float)delta_y / delta_x)) / delta_y) - (theta - alpha)) / (2 * alpha / src_h));
+                int v = (int)((atan((float)delta_y / delta_x) - (gamma - alpha)) / (2 * alpha / src_w));
+
+                if (u >= 0 && u < src_h && v >= 0 && v < src_w)
+                    maptable[index] = src_w * u + v;
+                else
+                    maptable[index] = -1;
+            }
+        }
+    }
+}
+
+void InversePerspective(const int dst_w, const int dst_h, const unsigned char *src, const int *maptable, unsigned char *dst)
+{
+    int index = 0;
+    for (int j = 0; j < dst_h; ++j)
+    {
+        for (int i = 0; i < dst_w; ++i)
+        {
+            if (maptable[index] == -1)
+            {
+                dst[i * dst_h + j] = 0;
+            }
+            else
+            {
+                dst[i * dst_h + j] = src[maptable[index]];
+            }
+            ++index;
+        }
+    }
+}
+
+void MaptablePxToM(int *maptable, int maptable_size, int *maptable_m)
+{
+    for (int i = 0; i < maptable_size; ++i)
+    {
+        maptable_m[i] = (int)(maptable[i] * cam_params.cam_scale_x / 100);
+    }
+}
+
+int PxToCm(int p)
+{
+    return (int)(p * cam_params.cam_scale_x);
+}
+
+int CmToPx(int p)
+{
+    return (int)(p / cam_params.cam_scale_x);
+}
 // void BuildIPMTable(int srcw, int srch, int dstw, int dsth, int vptx, int vpty, int *maptable)
 // {
 //     /**

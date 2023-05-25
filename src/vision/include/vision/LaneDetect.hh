@@ -90,7 +90,7 @@ public:
 
     void getLane()
     {
-        for (int i = vanishingPt; i < currFrame.rows; i++)
+        for (int i = 0; i < currFrame.rows; i++)
             for (int j = 0; j < currFrame.cols; j++)
             {
                 temp.at<uchar>(i, j) = 0;
@@ -103,13 +103,13 @@ public:
 
     void markLane()
     {
-        for (int i = vanishingPt; i < currFrame.rows; i++)
+        for (int i = 0; i < currFrame.rows; i++)
         {
             // IF COLOUR IMAGE IS GIVEN then additional check can be done
             //  lane markings RGB values will be nearly same to each other(i.e without any hue)
 
             // min lane width is taken to be 5
-            laneWidth = 5 + maxLaneWidth * (i - vanishingPt) / ROIrows;
+            laneWidth = 5 + maxLaneWidth * (i - 0) / ROIrows;
             for (int j = laneWidth; j < currFrame.cols - laneWidth; j++)
             {
 
@@ -211,10 +211,14 @@ public:
     vector<Point> getLanes()
     {
         vector<Point> lanePoints;
-        for (int i = vanishingPt; i < currFrame.rows; i++)
+        for (int i = 0; i < currFrame.rows; i++)
             for (int j = 0; j < currFrame.cols; j++)
-                if (temp2.at<uchar>(i, j) == 255)
+            {
+                if (i > (currFrame.rows - 50))
+                    continue;
+                if (temp2.at<uchar>(i, j) >= 220 && temp2.at<uchar>(i, j) <= 255)
                     lanePoints.push_back(Point(j, i));
+            }
         this->lanes = lanePoints;
         return lanePoints;
     }
@@ -223,17 +227,19 @@ public:
     {
         // detect from left bottom to vanishing point, the first detected lane is the left lane
         vector<Point> leftLane;
-        for (int i = vanishingPt; i < temp2.rows; i++)
+        for (int i = 0; i < temp2.rows; i++)
             for (int j = 0; j < temp2.cols; j++)
             {
-                if (temp2.at<uchar>(i, j) == 255)
+                if (i > (currFrame.rows - 50))
+                    continue;
+                if (temp2.at<uchar>(i, j) >= 220 && temp2.at<uchar>(i, j) <= 255)
                 {
                     leftLane.push_back(Point(j, i));
                     if (abs(leftLane.back().x - j) > 100)
                         break;
                     break;
                 }
-                if (j >= temp2.cols / 2)
+                if (j >= temp2.cols * 2 / 3)
                     break;
             }
         this->left_lane = leftLane;
@@ -243,10 +249,12 @@ public:
     vector<Point> getRightLane()
     {
         vector<Point> rightLane;
-        for (int i = vanishingPt; i < temp2.rows; i++)
+        for (int i = 0; i < temp2.rows; i++)
             for (int j = temp2.cols; j > 0; j--)
             {
-                if (temp2.at<uchar>(i, j) == 255)
+                if (i > (currFrame.rows - 50))
+                    continue;
+                if (temp2.at<uchar>(i, j) >= 220 && temp2.at<uchar>(i, j) <= 255)
                 {
                     rightLane.push_back(Point(j, i));
                     if (abs(rightLane.back().x - j) > 100)
