@@ -37,6 +37,28 @@ typedef struct CarData_Tag
     float distance_between_wheels;
 } CarData, *CarDataPtr;
 
+struct CameraParameters
+{
+    double horizontal_fov; // in radian
+    int image_width;       // in pixels
+    int image_height;      // in pixels
+    double near_clip;      // in meters
+    double far_clip;       // in meters
+    double noise_mean;     // in meters
+    double noise_std_dev;  // in meters
+    double hack_baseline;  // in meters
+    double distortion_k1;  // radial distortion coefficient
+    double distortion_k2;  // radial distortion coefficient
+    double distortion_k3;  // radial distortion coefficient
+    double distortion_t1;  // tangential distortion coefficient
+    double distortion_t2;  // tangential distortion coefficient
+    double camera_pos_x;   // in cm
+    double camera_pos_y;   // in cm
+    double camera_pos_z;   // in cm
+    double cam_scale_x;    // in cm
+    double cam_scale_y;    // in cm
+};
+
 typedef Pose3D CarPose, *CarPosePtr;
 typedef Pose2D Lane, *LanePtr;
 typedef Pose2D Obstacles, *ObstaclesPtr;
