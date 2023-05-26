@@ -85,7 +85,7 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
         float obs_x, obs_y;
         if (ranges[i] < 80)
         {
-            printf("range: %f\n", ranges[i]);
+            // printf("range: %f\n", ranges[i]);
             // based on car perspective
             obs_y = cos(DEG2RAD(i)) * curr_range;
             obs_x = sin(DEG2RAD(i)) * curr_range;

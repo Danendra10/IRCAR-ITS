@@ -28,11 +28,6 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-catkin_install_python(PROGRAMS
-  scripts/vision.py
-  scripts/trial.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
 
 
 add_executable(vision_cpp src/vision.cpp)

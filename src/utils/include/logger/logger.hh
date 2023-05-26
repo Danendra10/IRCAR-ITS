@@ -23,7 +23,7 @@
 #define WHITE "\033[0;37m"
 #define RESET "\033[0m"
 
-#define LOGDIR "/home/iris/routine/Log/log.txt"
+#define LOGDIR "/home/isabellej/update_fira/Log/log.txt"
 
 void Logger(const char *color, const char *msg, ...);
 void SaveLog(const char *msg, ...);

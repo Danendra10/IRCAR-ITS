@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1.0 / 60.0), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1.0 / 50.0), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -106,7 +106,6 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         if (data_validator < 0b001)
             return;
-        printf("%.2f \n", general_data->middle_lane[0].x);
         float car_to_left = sqrt(pow(general_data->car_pose.x - general_data->left_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->left_lane[0].y, 2));
         float car_to_rght = sqrt(pow(general_data->car_pose.x - general_data->right_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->right_lane[0].y, 2));
 
@@ -165,7 +164,7 @@ void RobotMovement(general_data_ptr data)
     data->car_vel.th = alpha;
     data->car_vel.x = 0.5;
 
-    printf("target %.2f alpha: %f\n", data->car_target.y, alpha);
+    // printf("target %.2f alpha: %f\n", data->car_target.y, alpha);
 }
 
 void TransmitData(general_data_ptr data)

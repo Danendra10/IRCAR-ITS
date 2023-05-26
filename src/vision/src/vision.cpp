@@ -93,6 +93,8 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     detect.nextFrame(frame_remapped);
 
+    Mat obs_frame = DrawObsPoints(raw_obstacles);
+
     Mat final_lane = detect.getResult();
 
     vector<Point> lanes = detect.getLanes();
@@ -141,10 +143,11 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
-    imshow("frame", raw_frame);
+    // imshow("frame", raw_frame);
     imshow("frame_remapped", frame_remapped);
-    imshow("final_lane", final_lane);
-    imshow("lane_points", lane_points);
+    // imshow("final_lane", final_lane);
+    imshow("with obs", obs_frame);
+    // imshow("lane_points", lane_points);
     waitKey(1);
 }
 
@@ -479,17 +482,19 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     // draw car in the middle
     float car_x = 400;
     float car_y = 700;
+    float obs_x;
+    float obs_y;
 
-    cv::rectangle(frame, cv::Point(car_x - 20, car_y - 20), cv::Point(car_x + 20, car_y + 20), cv::Scalar(0, 255, 0), 2);
+    cv::circle(frame, cv::Point(car_x, car_y), 30, cv::Scalar(0, 255, 0), 2);
 
     for (int i = 0; i < points.size(); i++)
     {
         // float obs_x = (points[i]->y * 10) + 400;
         // float obs_y = (points[i]->x * -10) + 700;
-        float obs_y = (points[i]->x * 8 + car_x);
-        float obs_x = (points[i]->y * 8 + car_y);
+        obs_y = (700 - points[i]->x * 50);
+        obs_x = (points[i]->y * 60 + 400);
 
-        printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
+        // printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
         cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
     }
 
@@ -502,6 +507,7 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     // float safe_angle = 10;
     // cv::line(frame, cv::Point(300, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
     // cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
+    putText(frame, "point : x " + to_string(obs_x) + "y " + to_string(obs_y), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1, 8, false);
 
     return frame;
 }
