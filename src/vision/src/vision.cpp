@@ -61,13 +61,13 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     for (int i = 0; i < msg->x.size(); i++)
     {
         ObstaclesPtr obstacle(new Obstacles);
-        obstacle->x = msg->x[i];
-        obstacle->y = msg->y[i];
+        obstacle->x = msg->x[i] + car_pose.x;
+        obstacle->y = msg->y[i] + car_pose.y;
         obstacles.push_back(obstacle);
 
         ObstaclesPtr raw_obstacle(new Obstacles);
-        raw_obstacle->x = msg->x[i] - car_pose.x;
-        raw_obstacle->y = msg->y[i] - car_pose.y;
+        raw_obstacle->x = msg->x[i];
+        raw_obstacle->y = msg->y[i];
         raw_obstacles.push_back(raw_obstacle);
     }
 }
@@ -489,12 +489,11 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
 
     for (int i = 0; i < points.size(); i++)
     {
-        // float obs_x = (points[i]->y * 10) + 400;
-        // float obs_y = (points[i]->x * -10) + 700;
-        obs_y = (700 - points[i]->x * 50);
+        obs_y = (700 - points[i]->x * 30);
         obs_x = (points[i]->y * 60 + 400);
 
-        // printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
+        printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
+        // printf("points obs x %.2f y %.2f\n", points[i]->x, points[i]->y);
         cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
     }
 

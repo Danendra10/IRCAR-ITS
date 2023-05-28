@@ -23,7 +23,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    DecideCarTarget(&general_instance);
+    // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -154,6 +154,7 @@ void DecideCarTarget(general_data_ptr general_data)
 
 void RobotMovement(general_data_ptr data)
 {
+    printf("target : x %.2f y %.2f", data->car_target.x, data->car_target.y);
     //---Pure pirsuit ICR
     //===================
     float angle_to_target = atan2(data->car_target.y - data->car_pose.y, data->car_target.x - data->car_pose.x);

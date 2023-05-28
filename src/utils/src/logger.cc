@@ -9,7 +9,7 @@ void Sleep(uint64_t msec)
 
 void Logger(const char *color, const char *msg, ...)
 {
-    SaveLog(msg);
+    // SaveLog(msg);
     time_t now = time(0);
     tm *ltm = localtime(&now);
     char buffer[100];
