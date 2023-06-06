@@ -80,6 +80,7 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
 //============================================================
 
 void Tim30HzCllbck(const ros::TimerEvent &event);
+void click_event(int event, int x, int y, int flags, void *params);
 
 //============================================================
 

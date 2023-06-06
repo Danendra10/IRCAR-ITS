@@ -73,6 +73,7 @@ void SubOdomCllbck(const nav_msgs::OdometryConstPtr &odom)
     {
         car_pose.th += 360;
     }
+    // printf("car pose || %.2f %.2f %.2f\n", car_pose.x, car_pose.y, car_pose.th);
 }
 
 void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
@@ -91,6 +92,7 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
             obs_x = sin(DEG2RAD(i)) * curr_range;
             raw_obstacles.x.push_back(obs_x);
             raw_obstacles.y.push_back(obs_y);
+            raw_obstacles.dist.push_back(curr_range);
         }
     }
     pub_lidar_data.publish(raw_obstacles);

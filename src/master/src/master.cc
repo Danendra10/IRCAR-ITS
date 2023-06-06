@@ -1,5 +1,7 @@
 #include "master/master.hh"
 
+vector<double> regresi;
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "master");
@@ -11,9 +13,10 @@ int main(int argc, char **argv)
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
     general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
+
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1.0 / 50.0), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -62,6 +65,7 @@ void GetKeyboard()
 
 void MoveRobot(float vx_, float vz_)
 {
+
     general_instance.car_vel.x = vx_;
     general_instance.car_vel.th = vz_;
 }
@@ -154,7 +158,8 @@ void DecideCarTarget(general_data_ptr general_data)
 
 void RobotMovement(general_data_ptr data)
 {
-    printf("target : x %.2f y %.2f", data->car_target.x, data->car_target.y);
+    // printf("target : x %.2f y %.2f\n", data->car_target.x, data->car_target.y);
+
     //---Pure pirsuit ICR
     //===================
     float angle_to_target = atan2(data->car_target.y - data->car_pose.y, data->car_target.x - data->car_pose.x);
@@ -174,4 +179,17 @@ void TransmitData(general_data_ptr data)
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
     data->pub_car_vel.publish(vel_msg);
+}
+
+float pixel_to_cm(float pix)
+{
+    int max_orde = 6;
+    double orde[] = {2.3649274674616105e-001, 7.4438017190788713e-002, -1.1337384559810578e-003, 8.8301091188629612e-006, -3.2019522763853476e-008, 5.5241745024574102e-011, -3.6484288804595712e-014};
+    double result = 0;
+    for (int i = 0; i <= max_orde; i++)
+    {
+        result += (regresi[i] * pow(pix, (double)i));
+    }
+
+    return result;
 }

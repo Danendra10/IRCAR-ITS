@@ -83,15 +83,15 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         general_instance.raw_obs_data.push_back(raw_obs);
 
         Obstacles obs;
-        obs.x = msg->x[i] - general_instance.car_pose.x;
-        obs.y = msg->y[i] - general_instance.car_pose.y;
+        obs.x = msg->x[i] + general_instance.car_pose.x;
+        obs.y = msg->y[i] + general_instance.car_pose.y;
         general_instance.obs_data.push_back(obs);
 
         general_instance.obs_status = 1;
     }
 
     data_validator |= 0b010;
-    // printf("data validnya 1 %d\n", data_validator);
+    // printf("data validnya %d\n", data_validator);
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -119,45 +119,46 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
     general_instance.middle_right_target.clear();
     general_instance.middle_left_target.clear();
 
-    for (int i = 0; i < msg->left_lane_x.size(); i++)
-    {
-        Lane lane;
-        lane.x = msg->left_lane_x[i];
-        lane.y = msg->left_lane_y[i];
-        general_instance.left_lane.push_back(lane);
-    }
+    // for (int i = 0; i < msg->left_lane_x.size(); i++)
+    // {
+    //     Lane lane;
+    //     lane.x = msg->left_lane_x[i];
+    //     lane.y = msg->left_lane_y[i];
+    //     general_instance.left_lane.push_back(lane);
+    // }
 
     for (int i = 0; i < msg->middle_lane_x.size(); i++)
     {
         Lane lane;
         lane.x = msg->middle_lane_x[i];
         lane.y = msg->middle_lane_y[i];
+        // printf("middle %.2f\n\n", lane.x);
         general_instance.middle_lane.push_back(lane);
     }
 
-    for (int i = 0; i < msg->right_lane_x.size(); i++)
-    {
-        Lane lane;
-        lane.x = msg->right_lane_x[i];
-        lane.y = msg->right_lane_y[i];
-        general_instance.right_lane.push_back(lane);
-    }
+    // for (int i = 0; i < msg->right_lane_x.size(); i++)
+    // {
+    //     Lane lane;
+    //     lane.x = msg->right_lane_x[i];
+    //     lane.y = msg->right_lane_y[i];
+    //     general_instance.right_lane.push_back(lane);
+    // }
 
-    for (int i = 0; i < msg->left_target_x.size(); i++)
-    {
-        Lane lane;
-        lane.x = msg->left_target_x[i];
-        lane.y = msg->left_target_y[i];
-        general_instance.middle_left_target.push_back(lane);
-    }
+    // for (int i = 0; i < msg->left_target_x.size(); i++)
+    // {
+    //     Lane lane;
+    //     lane.x = msg->left_target_x[i];
+    //     lane.y = msg->left_target_y[i];
+    //     general_instance.middle_left_target.push_back(lane);
+    // }
 
-    for (int i = 0; i < msg->right_target_x.size(); i++)
-    {
-        Lane lane;
-        lane.x = msg->right_target_x[i];
-        lane.y = msg->right_target_y[i];
-        general_instance.middle_right_target.push_back(lane);
-    }
+    // for (int i = 0; i < msg->right_target_x.size(); i++)
+    // {
+    //     Lane lane;
+    //     lane.x = msg->right_target_x[i];
+    //     lane.y = msg->right_target_y[i];
+    //     general_instance.middle_right_target.push_back(lane);
+    // }
 
     data_validator |= 0b001;
     // printf("data validnya %d\n", data_validator);
@@ -171,6 +172,7 @@ void MoveRobot(float vx_, float vz_);
 void TransmitData(general_data_ptr data);
 void RobotMovement(general_data_ptr data);
 void DecideCarTarget(general_data_ptr data);
+float pixel_to_cm(float pix);
 
 int8_t kbhit()
 {

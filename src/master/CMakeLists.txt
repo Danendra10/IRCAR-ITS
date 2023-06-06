@@ -10,15 +10,15 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   nav_msgs
   utils
+  motion
   geometry_msgs
   msg_collection
-  motion
 )
 
 find_package(OpenCV REQUIRED)
 
 catkin_package(
-#  INCLUDE_DIRS include
+ INCLUDE_DIRS include
 )
 
 include_directories(

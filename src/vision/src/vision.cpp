@@ -19,7 +19,6 @@ int main(int argc, char **argv)
     LogParams();
 
     tim_30hz = NH.createTimer(ros::Duration(1.0 / 30.0), Tim30HzCllbck);
-
     sub_raw_frame = IT.subscribe("/catvehicle/camera_front/image_raw_front", 1, SubRawFrameCllbck);
     sub_odom = NH.subscribe("/catvehicle/odom", 1, SubOdomRaw);
     sub_lidar_data = NH.subscribe("/lidar_data", 1, SubLidarData);
@@ -68,7 +67,11 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         ObstaclesPtr raw_obstacle(new Obstacles);
         raw_obstacle->x = msg->x[i];
         raw_obstacle->y = msg->y[i];
+        raw_obstacle->dist = msg->dist[i];
         raw_obstacles.push_back(raw_obstacle);
+
+        if (i % 10 == 0)
+            printf("obs %.2f %.2f || dist %.2f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
     }
 }
 
@@ -103,6 +106,8 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     vector<Point> left_lane = detect.getLeftLane();
 
+    msg_collection::PointArray lane;
+
     for (int i = 0; i < left_lane.size(); i++)
     {
         circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
@@ -116,17 +121,21 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
-    vector<double> middle_lane_x;
-    vector<double> middle_lane_y;
+    vector<double> x_middle_lane;
+    vector<double> y_middle_lane;
 
     for (int i = 0; i < middle_lane.size(); i++)
     {
         circle(lane_points, middle_lane[i], 3, Scalar(255, 255, 255), -1);
-        middle_lane_x.push_back(middle_lane[i].x);
-        middle_lane_y.push_back(middle_lane[i].y);
+        lane.middle_lane_x.push_back(middle_lane[i].x);
+        lane.middle_lane_y.push_back(middle_lane[i].y);
+        x_middle_lane.push_back(middle_lane[i].x);
+        y_middle_lane.push_back(middle_lane[i].y);
     }
 
-    polynom.fit(middle_lane_x, middle_lane_y);
+    pub_points.publish(lane);
+
+    polynom.fit(x_middle_lane, y_middle_lane);
 
     for (int i = 0; i < 800; i++)
     {
@@ -144,14 +153,26 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
     // imshow("frame", raw_frame);
-    imshow("frame_remapped", frame_remapped);
-    // imshow("final_lane", final_lane);
-    imshow("with obs", obs_frame);
+    // setMouseCallback("frame_remapped", click_event);
+    // imshow("frame_remapped", frame_remapped);
+    imshow("final_lane", final_lane);
+    // imshow("with obs", obs_frame);
     // imshow("lane_points", lane_points);
+
     waitKey(1);
 }
 
 //========================================================================================================================
+
+void click_event(int event, int x, int y, int flags, void *params)
+{
+    if (event == EVENT_LBUTTONDOWN)
+    {
+        float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
+        printf("CLICKED x %d y %d dist %.2f\n\n", x - 400, 800 - y, distance_on_frame);
+        // imshow("frame_remapped", raw_frame);
+    }
+}
 
 void Init()
 {
@@ -482,17 +503,15 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     // draw car in the middle
     float car_x = 400;
     float car_y = 700;
-    float obs_x;
-    float obs_y;
 
     cv::circle(frame, cv::Point(car_x, car_y), 30, cv::Scalar(0, 255, 0), 2);
 
     for (int i = 0; i < points.size(); i++)
     {
-        obs_y = (700 - points[i]->x * 30);
-        obs_x = (points[i]->y * 60 + 400);
+        float obs_y = (700 - points[i]->x * 30);
+        float obs_x = (points[i]->y * 60 + 400);
 
-        printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
+        // printf("obs frame x %.2f y %.2f\n", obs_x, obs_y);
         // printf("points obs x %.2f y %.2f\n", points[i]->x, points[i]->y);
         cv::circle(frame, cv::Point(obs_x, obs_y), 5, cv::Scalar(0, 0, 255), -1);
     }
@@ -506,7 +525,6 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     // float safe_angle = 10;
     // cv::line(frame, cv::Point(300, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
     // cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
-    putText(frame, "point : x " + to_string(obs_x) + "y " + to_string(obs_y), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1, 8, false);
 
     return frame;
 }

@@ -9,13 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   utils
+  msg_collection
 )
 
 catkin_package(
  INCLUDE_DIRS include
-#  LIBRARIES motion
-#  CATKIN_DEPENDS geometry_msgs roscpp rospy std_msgs
-#  DEPENDS system_lib
+
 )
 
 include_directories(
@@ -23,8 +22,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME}_lib
+add_library(motion_lib
   src/motion.cpp
 )
 
-target_link_libraries(${PROJECT_NAME}_lib ${catkin_LIBRARIES} entity_lib math_lib pid_lib potential_field_lib)
+target_link_libraries(motion_lib ${catkin_LIBRARIES} entity_lib math_lib pid_lib potential_field_lib)

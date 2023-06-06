@@ -12,6 +12,7 @@ typedef struct Pose2D_Tag
 {
     float x;
     float y;
+    float dist;
 } Pose2D, *Pose2DPtr;
 
 typedef struct Vector3D_Tag
