@@ -10,6 +10,7 @@ using namespace cv;
 unsigned int DivideBy2(unsigned int in);
 unsigned int DivideBy3(unsigned int in);
 unsigned int DivideBy4(unsigned int in);
+float pixel_to_real(float pix);
 
 class PolynomialRegression
 {

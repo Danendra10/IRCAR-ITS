@@ -1,7 +1,5 @@
 #include "master/master.hh"
 
-vector<double> regresi;
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "master");
@@ -75,19 +73,19 @@ void SimulatorState()
     switch (general_instance.main_state.value)
     {
     case FORWARD:
-        MoveRobot(1, 0);
+        MoveRobot(3, 0);
         break;
 
     case BACKWARD:
-        MoveRobot(-1, 0);
+        MoveRobot(-3, 0);
         break;
 
     case TURN_LEFT:
-        MoveRobot(1, 1);
+        MoveRobot(3, 3);
         break;
 
     case TURN_RIGHT:
-        MoveRobot(1, -1);
+        MoveRobot(3, -3);
         break;
 
     case AUTONOMOUS:
@@ -110,6 +108,7 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         if (data_validator < 0b001)
             return;
+        // printf("%.2f\n", general_data->left_lane[0].x);
         float car_to_left = sqrt(pow(general_data->car_pose.x - general_data->left_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->left_lane[0].y, 2));
         float car_to_rght = sqrt(pow(general_data->car_pose.x - general_data->right_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->right_lane[0].y, 2));
 
@@ -179,17 +178,4 @@ void TransmitData(general_data_ptr data)
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
     data->pub_car_vel.publish(vel_msg);
-}
-
-float pixel_to_cm(float pix)
-{
-    int max_orde = 6;
-    double orde[] = {2.3649274674616105e-001, 7.4438017190788713e-002, -1.1337384559810578e-003, 8.8301091188629612e-006, -3.2019522763853476e-008, 5.5241745024574102e-011, -3.6484288804595712e-014};
-    double result = 0;
-    for (int i = 0; i <= max_orde; i++)
-    {
-        result += (regresi[i] * pow(pix, (double)i));
-    }
-
-    return result;
 }

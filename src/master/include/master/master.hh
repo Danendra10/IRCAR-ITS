@@ -8,6 +8,8 @@
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
 #include "sensor_msgs/JointState.h"
+#include "math/math.hh"
+
 #include <vector>
 
 #include <termios.h>
@@ -81,6 +83,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
+        // printf("lidar || x %.2f y %.2f\n", raw_obs.x, raw_obs.y);
 
         Obstacles obs;
         obs.x = msg->x[i] + general_instance.car_pose.x;
@@ -132,9 +135,11 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
         Lane lane;
         lane.x = msg->middle_lane_x[i];
         lane.y = msg->middle_lane_y[i];
-        // printf("middle %.2f\n\n", lane.x);
+        printf("middle %.2f || %.2f\n", lane.x, lane.y);
         general_instance.middle_lane.push_back(lane);
+        printf("real || x %.2f y %.2f\n\n", pixel_to_real(800 - general_instance.middle_lane[i].y), pixel_to_real(general_instance.middle_lane[i].x - 400));
     }
+    // printf("pixel from car --> x = %f, y = %f\n", general_instance.middle_lane[0].y, general_instance.middle_lane[0].x - 400);
 
     // for (int i = 0; i < msg->right_lane_x.size(); i++)
     // {
@@ -172,7 +177,6 @@ void MoveRobot(float vx_, float vz_);
 void TransmitData(general_data_ptr data);
 void RobotMovement(general_data_ptr data);
 void DecideCarTarget(general_data_ptr data);
-float pixel_to_cm(float pix);
 
 int8_t kbhit()
 {

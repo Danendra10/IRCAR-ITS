@@ -1,5 +1,7 @@
 #include "math/math.hh"
 
+vector<double> regresi;
+
 unsigned int DivideBy2(unsigned int in)
 {
     return in >> 1;
@@ -17,6 +19,24 @@ unsigned int DivideBy3(unsigned int in)
 unsigned int DivideBy4(unsigned int in)
 {
     return in >> 2;
+}
+
+float pixel_to_real(float pix)
+{
+    int max_orde = 5;
+    double orde[] = {1.6025170549750258e+000, -8.0261626712776948e-003, 1.9085792942752757e-004, -5.1360872046995370e-007, 6.6860526863516786e-010, -2.8823572300900999e-013};
+
+    // double orde[] = {2.3649274674616105e-001, 7.4438017190788713e-002, -1.1337384559810578e-003, 8.8301091188629612e-006, -3.2019522763853476e-008, 5.5241745024574102e-011, -3.6484288804595712e-014};
+    double result = 0;
+    for (int i = 0; i <= max_orde; i++)
+    {
+
+        result += (orde[i] * pow(pix, (double)i));
+        // printf("MASUK ke %d, %f || %f || %f\n", i, pix, orde[i] * pow(pix, i), result);
+        // result += (regresi[i] * pow(pix, i));
+    }
+
+    return result;
 }
 
 PolynomialRegression::PolynomialRegression(int degree)

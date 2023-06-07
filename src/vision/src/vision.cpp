@@ -70,8 +70,8 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obstacle->dist = msg->dist[i];
         raw_obstacles.push_back(raw_obstacle);
 
-        if (i % 10 == 0)
-            printf("obs %.2f %.2f || dist %.2f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
+        // if (i % 10 == 0)
+        //     printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
     }
 }
 
@@ -169,8 +169,7 @@ void click_event(int event, int x, int y, int flags, void *params)
     if (event == EVENT_LBUTTONDOWN)
     {
         float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
-        printf("CLICKED x %d y %d dist %.2f\n\n", x - 400, 800 - y, distance_on_frame);
-        // imshow("frame_remapped", raw_frame);
+        printf("CLICKED x %d y %d dist %f\n\n", x - 400, 800 - y, distance_on_frame);
     }
 }
 
