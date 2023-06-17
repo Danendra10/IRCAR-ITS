@@ -40,8 +40,11 @@ typedef struct general_data_tag
     vector<Lane> left_lane;
     vector<Lane> middle_lane;
     vector<Lane> right_lane;
-    vector<Lane> middle_right_target;
-    vector<Lane> middle_left_target;
+    // vector<Lane> middle_right_target;
+    // vector<Lane> middle_left_target;
+
+    vector<RealLane> left_lane_from_car;
+    vector<RealLane> right_lane_position;
 
     MachineState main_state;
 
@@ -89,8 +92,10 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         obs.x = msg->x[i] + general_instance.car_pose.x;
         obs.y = msg->y[i] + general_instance.car_pose.y;
         general_instance.obs_data.push_back(obs);
-
-        general_instance.obs_status = 1;
+        if (obs.y > 0)
+            general_instance.obs_status = 1;
+        else
+            general_instance.obs_status = 2;
     }
 
     data_validator |= 0b010;
@@ -99,12 +104,13 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
 {
+    // posisi sumbu x
     general_instance->car_data.rear_left_wheel_joint = msg->position[0];
     general_instance->car_data.rear_right_wheel_joint = msg->position[1];
     general_instance->car_data.front_right_wheel_joint = msg->position[4];
     general_instance->car_data.front_left_wheel_joint = msg->position[5];
 
-    general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
+    // general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
 }
 
 void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
@@ -116,38 +122,48 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 {
+    int buffer_lane_x, buffer_lane_y;
     general_instance.left_lane.clear();
     general_instance.middle_lane.clear();
     general_instance.right_lane.clear();
-    general_instance.middle_right_target.clear();
-    general_instance.middle_left_target.clear();
+    // general_instance.middle_right_target.clear();
+    // general_instance.middle_left_target.clear();
 
-    // for (int i = 0; i < msg->left_lane_x.size(); i++)
-    // {
-    //     Lane lane;
-    //     lane.x = msg->left_lane_x[i];
-    //     lane.y = msg->left_lane_y[i];
-    //     general_instance.left_lane.push_back(lane);
-    // }
+    for (int i = 0; i < msg->left_lane_x.size(); i++)
+    {
+        Lane lane;
+        lane.x = msg->left_lane_x[i];
+        lane.y = msg->left_lane_y[i];
+
+        general_instance.left_lane.push_back(lane);
+
+        // RealLane real_lane;
+        // real_lane.x = pixel_to_real(800 - general_instance.left_lane[i].y);
+        // real_lane.y = pixel_to_real(general_instance.left_lane[i].x - 400);
+        // general_instance.left_lane_from_car.push_back(real_lane);
+
+        // printf("left x %.2f || y %.2f\n", general_instance.left_lane_from_car[i].x, general_instance.left_lane_from_car[i].y);
+    }
 
     for (int i = 0; i < msg->middle_lane_x.size(); i++)
     {
         Lane lane;
         lane.x = msg->middle_lane_x[i];
         lane.y = msg->middle_lane_y[i];
-        printf("middle %.2f || %.2f\n", lane.x, lane.y);
+        // printf("middle %.2f || %.2f\n", lane.x, lane.y);
         general_instance.middle_lane.push_back(lane);
-        printf("real || x %.2f y %.2f\n\n", pixel_to_real(800 - general_instance.middle_lane[i].y), pixel_to_real(general_instance.middle_lane[i].x - 400));
+        // printf("real || x %.2f y %.2f\n\n", pixel_to_real(800 - general_instance.middle_lane[i].y), pixel_to_real(general_instance.middle_lane[i].x - 400));
     }
-    // printf("pixel from car --> x = %f, y = %f\n", general_instance.middle_lane[0].y, general_instance.middle_lane[0].x - 400);
 
-    // for (int i = 0; i < msg->right_lane_x.size(); i++)
-    // {
-    //     Lane lane;
-    //     lane.x = msg->right_lane_x[i];
-    //     lane.y = msg->right_lane_y[i];
-    //     general_instance.right_lane.push_back(lane);
-    // }
+    for (int i = 0; i < msg->right_lane_x.size(); i++)
+    {
+        Lane lane;
+
+        lane.x = msg->right_lane_x[i];
+        lane.y = msg->right_lane_y[i];
+
+        general_instance.right_lane.push_back(lane);
+    }
 
     // for (int i = 0; i < msg->left_target_x.size(); i++)
     // {
@@ -177,6 +193,8 @@ void MoveRobot(float vx_, float vz_);
 void TransmitData(general_data_ptr data);
 void RobotMovement(general_data_ptr data);
 void DecideCarTarget(general_data_ptr data);
+void AutoDrive(general_data_ptr data);
+void MoveWithObs(general_data_ptr data_in_obs);
 
 int8_t kbhit()
 {

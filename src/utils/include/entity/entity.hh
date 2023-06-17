@@ -13,6 +13,7 @@ typedef struct Pose2D_Tag
     float x;
     float y;
     float dist;
+    int status;
 } Pose2D, *Pose2DPtr;
 
 typedef struct Vector3D_Tag
@@ -63,6 +64,7 @@ struct CameraParameters
 
 typedef Pose3D CarPose, *CarPosePtr;
 typedef Pose2D Lane, *LanePtr;
+typedef Pose2D RealLane, *RealLanePtr;
 typedef Pose2D Obstacles, *ObstaclesPtr;
 typedef Vector3D Velocity, *VelocityPtr;
 typedef Vector3D Target, *TargetPtr;

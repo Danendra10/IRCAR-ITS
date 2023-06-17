@@ -85,6 +85,7 @@ void click_event(int event, int x, int y, int flags, void *params);
 //============================================================
 
 void Init();
+void record();
 Mat ToWrappedFrame(Mat raw_frame);
 vector<Point> GetPoints(Mat wrapped_frame);
 std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point> &points);

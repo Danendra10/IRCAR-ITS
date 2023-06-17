@@ -70,8 +70,8 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obstacle->dist = msg->dist[i];
         raw_obstacles.push_back(raw_obstacle);
 
-        // if (i % 10 == 0)
-        //     printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
+        if (i % 10 == 0)
+            printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
     }
 }
 
@@ -111,6 +111,8 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     for (int i = 0; i < left_lane.size(); i++)
     {
         circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
+        lane.left_lane_x.push_back(left_lane[i].x);
+        lane.left_lane_y.push_back(left_lane[i].y);
     }
 
     vector<Point> right_lane = detect.getRightLane();
@@ -118,6 +120,8 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     for (int i = 0; i < right_lane.size(); i++)
     {
         circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
+        lane.right_lane_x.push_back(right_lane[i].x);
+        lane.right_lane_y.push_back(right_lane[i].y);
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
@@ -153,11 +157,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
     // imshow("frame", raw_frame);
+    // record();
     // setMouseCallback("frame_remapped", click_event);
     // imshow("frame_remapped", frame_remapped);
-    imshow("final_lane", final_lane);
+    // imshow("final_lane", final_lane);
     // imshow("with obs", obs_frame);
-    // imshow("lane_points", lane_points);
+    imshow("lane_points", lane_points);
 
     waitKey(1);
 }
@@ -171,6 +176,23 @@ void click_event(int event, int x, int y, int flags, void *params)
         float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
         printf("CLICKED x %d y %d dist %f\n\n", x - 400, 800 - y, distance_on_frame);
     }
+}
+void record()
+{
+
+    int frame_width = 800;
+    int frame_height = 800;
+
+    VideoWriter video;
+
+    video.open("/home/isabellej/Desktop/test.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
+    for (int i = 0; i < 999; i++)
+    {
+        video.write(raw_frame);
+        printf("%d recording.\n", i);
+    }
+    video.release();
+    destroyAllWindows();
 }
 
 void Init()

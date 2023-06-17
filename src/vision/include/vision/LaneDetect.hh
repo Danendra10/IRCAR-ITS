@@ -230,7 +230,7 @@ public:
         for (int i = 0; i < temp2.rows; i++)
             for (int j = 0; j < temp2.cols; j++)
             {
-                if (i > (currFrame.rows - 50))
+                if (i > (currFrame.rows - 100))
                     continue;
                 if (temp2.at<uchar>(i, j) >= 220 && temp2.at<uchar>(i, j) <= 255)
                 {
@@ -252,7 +252,7 @@ public:
         for (int i = 0; i < temp2.rows; i++)
             for (int j = temp2.cols; j > 0; j--)
             {
-                if (i > (currFrame.rows - 50))
+                if (i > (currFrame.rows - 100))
                     continue;
                 if (temp2.at<uchar>(i, j) >= 220 && temp2.at<uchar>(i, j) <= 255)
                 {
@@ -274,9 +274,33 @@ public:
         vector<Point> left = this->left_lane;
         vector<Point> right = this->right_lane;
         vector<Point> middle;
+        int calc_buffer_x_left, calc_buffer_y_left;
+        int calc_buffer_x_right, calc_buffer_y_right;
 
         for (int i = 0; i < left.size() && i < right.size(); i++)
         {
+            if (left[i].x != 0 && left[i].y != 0)
+            {
+                calc_buffer_x_left = left[i].x;
+                calc_buffer_y_left = left[i].y;
+            }
+            else
+            {
+                left[i].x = calc_buffer_x_left;
+                left[i].y = calc_buffer_y_left;
+            }
+
+            if (right[i].x != 0 && right[i].y != 0)
+            {
+                calc_buffer_x_right = right[i].x;
+                calc_buffer_y_right = right[i].y;
+            }
+            else
+            {
+                right[i].x = calc_buffer_x_right;
+                right[i].y = calc_buffer_y_right;
+            }
+
             Point mid = Point((left[i].x + right[i].x) / 2, (left[i].y + right[i].y) / 2);
             middle.push_back(mid);
             this->middle_lane.push_back(mid);

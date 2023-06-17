@@ -24,7 +24,8 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    // DecideCarTarget(&general_instance);
+    // AutoDrive(&general_instance);
+    DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -73,19 +74,19 @@ void SimulatorState()
     switch (general_instance.main_state.value)
     {
     case FORWARD:
-        MoveRobot(3, 0);
+        MoveRobot(2, 0);
         break;
 
     case BACKWARD:
-        MoveRobot(-3, 0);
+        MoveRobot(-2, 0);
         break;
 
     case TURN_LEFT:
-        MoveRobot(3, 3);
+        MoveRobot(2, 2);
         break;
 
     case TURN_RIGHT:
-        MoveRobot(3, -3);
+        MoveRobot(2, -2);
         break;
 
     case AUTONOMOUS:
@@ -108,46 +109,65 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         if (data_validator < 0b001)
             return;
-        // printf("%.2f\n", general_data->left_lane[0].x);
-        float car_to_left = sqrt(pow(general_data->car_pose.x - general_data->left_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->left_lane[0].y, 2));
-        float car_to_rght = sqrt(pow(general_data->car_pose.x - general_data->right_lane[0].x, 2) + pow(general_data->car_pose.y - general_data->right_lane[0].y, 2));
+        // printf("lengthhh %d\n", general_data->middle_lane.size());
+        int lane_buffer_x, lane_buffer_y;
+        int middle_lane_size = general_data->middle_lane.size();
+        int left_lane_size = general_data->left_lane.size();
+        int right_lane_size = general_data->right_lane.size();
+        float car_to_left = sqrt(pow(pixel_to_real(700 - general_data->left_lane[left_lane_size - 1].y), 2) + pow(pixel_to_real(400 - general_data->left_lane[left_lane_size - 1].x), 2));
+        float car_to_right = sqrt(pow(pixel_to_real(700 - general_data->right_lane[right_lane_size - 1].y), 2) + pow(pixel_to_real(general_data->right_lane[right_lane_size - 1].x - 400), 2));
+        int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
 
-        if (general_data->obs_status)
+        // printf("from left %f || from right %f\n", car_to_left, car_to_right);
+
+        if (middle_lane_size > 400 && abs(dist_between_points) < 20)
         {
-            float dist_from_left = sqrt(pow(general_data->left_lane[0].x - general_data->obs_data[0].x, 2) + pow(general_data->left_lane[0].y - general_data->obs_data[0].y, 2));
-            float dist_from_rght = sqrt(pow(general_data->right_lane[0].x - general_data->obs_data[1].x, 2) + pow(general_data->right_lane[0].y - general_data->obs_data[1].y, 2));
-            if (dist_from_left < dist_from_rght)
-                general_data->car_side = 10; // in left
-            else
-                general_data->car_side = 20;
-
-            switch (general_data->car_side)
-            {
-            case 10:
-                printf("left\n");
-                general_data->car_target.x = general_data->right_lane[0].x;
-                general_data->car_target.y = general_data->right_lane[0].y;
-                break;
-
-                //====================================================================
-
-            case 20:
-                printf("right\n");
-                general_data->car_target.x = general_data->left_lane[0].x;
-                general_data->car_target.y = general_data->left_lane[0].y;
-                break;
-            }
-            return;
+            lane_buffer_x = general_data->middle_lane[middle_lane_size - 1].x;
+            lane_buffer_y = general_data->middle_lane[middle_lane_size - 1].y;
         }
+        else
+        {
+            general_data->middle_lane[middle_lane_size - 1].x = lane_buffer_x;
+            general_data->middle_lane[middle_lane_size - 1].y = lane_buffer_y;
+        }
+        // printf("%d point %.2f\n", middle_lane_size, general_data->middle_lane[i].x);
+
+        // ROS_ERROR("DIFF %d", dist_between_points);
+        // MoveRobot(1, dist_between_points); //for setting direction
+
+        if ((car_to_left < car_to_right && general_data->obs_status == 0) || general_data->obs_status == 1)
+            general_data->car_side = 10;
+        else if ((car_to_left > car_to_right && general_data->obs_status == 0) || general_data->obs_status == 2)
+            general_data->car_side = 20;
+
+        switch (general_data->car_side)
+        {
+        case 10:
+            printf("TARGET KIRI\n");
+            general_data->car_target.y = general_data->car_pose.y + -1 * pixel_to_real(400 - ((general_data->left_lane[left_lane_size - 1].x + general_data->middle_lane[middle_lane_size - 1].x) / 2));
+            general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - ((general_data->left_lane[left_lane_size - 1].y + general_data->middle_lane[middle_lane_size - 1].y) / 2));
+            break;
+
+        case 20:
+            printf("TARGET KANAN\n");
+            general_data->car_target.y = general_data->car_pose.y + pixel_to_real(((general_data->right_lane[right_lane_size - 1].x + general_data->middle_lane[middle_lane_size - 1].x) / 2) - 400);
+            general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - ((general_data->right_lane[right_lane_size - 1].y + general_data->middle_lane[middle_lane_size - 1].y) / 2));
+            break;
+
+        default:
+            printf("TENGAH\n");
+            general_data->car_target.y = general_data->car_pose.y + pixel_to_real(400 - general_data->middle_lane[middle_lane_size - 1].x);
+            general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - general_data->middle_lane[middle_lane_size - 1].y);
+            break;
+        }
+        general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
+
+        // ROS_INFO("target %f %f %f\n", general_data->car_target.x, general_data->car_target.y, general_data->car_target.th);
 
         if (general_data->middle_lane.size() < 0)
             return;
         if (general_data->middle_lane[0].x == 0)
             return;
-
-        general_data->car_target.x = general_data->middle_lane[0].x;
-        general_data->car_target.y = general_data->middle_lane[0].y;
-        general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
     }
     catch (...)
     {
@@ -157,19 +177,6 @@ void DecideCarTarget(general_data_ptr general_data)
 
 void RobotMovement(general_data_ptr data)
 {
-    // printf("target : x %.2f y %.2f\n", data->car_target.x, data->car_target.y);
-
-    //---Pure pirsuit ICR
-    //===================
-    float angle_to_target = atan2(data->car_target.y - data->car_pose.y, data->car_target.x - data->car_pose.x);
-    float ld = 20;
-
-    float alpha = (2 * data->car_data.distance_between_wheels * sin(angle_to_target - data->car_pose.th)) / ld;
-
-    data->car_vel.th = alpha;
-    data->car_vel.x = 0.5;
-
-    // printf("target %.2f alpha: %f\n", data->car_target.y, alpha);
 }
 
 void TransmitData(general_data_ptr data)

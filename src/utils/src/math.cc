@@ -30,10 +30,7 @@ float pixel_to_real(float pix)
     double result = 0;
     for (int i = 0; i <= max_orde; i++)
     {
-
-        result += (orde[i] * pow(pix, (double)i));
-        // printf("MASUK ke %d, %f || %f || %f\n", i, pix, orde[i] * pow(pix, i), result);
-        // result += (regresi[i] * pow(pix, i));
+        result += (orde[i] * pow(pix, i));
     }
 
     return result;
