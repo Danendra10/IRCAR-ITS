@@ -83,11 +83,11 @@ void SimulatorState()
         break;
 
     case TURN_LEFT:
-        MoveRobot(2, 2);
+        MoveRobot(1, 2);
         break;
 
     case TURN_RIGHT:
-        MoveRobot(2, -2);
+        MoveRobot(1, -2);
         break;
 
     case AUTONOMOUS:
@@ -134,12 +134,10 @@ void DecideCarTarget(general_data_ptr general_data)
         // ROS_ERROR("DIFF %d", dist_between_points);
         // MoveRobot(1, dist_between_points); //only for setting direction
 
-        if ((car_to_left - car_to_right < -10 && general_data->obs_status == 0) || general_data->obs_status == 1)
+        if ((car_to_left - car_to_right < -3 && general_data->obs_status == 0) || general_data->obs_status == 1)
             general_data->car_side = 10;
-        else if ((car_to_left - car_to_right > 10 && general_data->obs_status == 0) || general_data->obs_status == 2)
+        else if ((car_to_left - car_to_right > 3 && general_data->obs_status == 0) || general_data->obs_status == 2)
             general_data->car_side = 20;
-        else
-            general_data->car_vel.th = 0;
 
         switch (general_data->car_side)
         {
@@ -179,10 +177,10 @@ void DecideCarTarget(general_data_ptr general_data)
 void RobotMovement(general_data_ptr data)
 {
     // PURE PURSUIT
-    float y_from_center = 0.765 / 2;
+    // float y_from_center = 0.765 / 2;
     float rear_joint_y = (data->car_data.rear_left_wheel_joint + data->car_data.rear_right_wheel_joint) / 2;
     float rear_joint_x = rear_joint_y * tan(data->car_pose.th);
-
+    printf("rear x %f y %f", rear_joint_x, rear_joint_y);
     float dist_y = data->car_target.y - rear_joint_y;
     float dist_x = data->car_target.x - rear_joint_x;
 
@@ -192,7 +190,7 @@ void RobotMovement(general_data_ptr data)
     float alpha = atan(dist_y / dist_x);
 
     float delta = atan(2 * distance_between_wheels * sin(alpha) / ld);
-    printf("dist wheels %f delta %f \n", distance_between_wheels, delta);
+    // printf("dist wheels %f delta %f \n", distance_between_wheels, delta);
     data->car_vel.th = delta;
     data->car_vel.x = 1;
 }
