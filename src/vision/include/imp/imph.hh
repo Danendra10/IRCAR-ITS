@@ -132,14 +132,14 @@ void MaptablePxToM(int *maptable, int maptable_size, int *maptable_m)
     }
 }
 
-int PxToCm(int p)
+float PxToM(int p)
 {
-    return (int)(p * cam_params.cam_scale_x);
+    return (float)(p * cam_params.cam_scale_x / 100);
 }
 
-int CmToPx(int p)
+float MToPx(int p)
 {
-    return (int)(p / cam_params.cam_scale_x);
+    return (float)(p * 100 / cam_params.cam_scale_x);
 }
 // void BuildIPMTable(int srcw, int srch, int dstw, int dsth, int vptx, int vpty, int *maptable)
 // {

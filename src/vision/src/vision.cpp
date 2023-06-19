@@ -25,6 +25,7 @@ int main(int argc, char **argv)
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
     pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
+    pub_lane = NH.advertise<msg_collection::RealPosition>("/real_lines", 1);
 
     MTS.spin();
 
@@ -107,12 +108,15 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     vector<Point> left_lane = detect.getLeftLane();
 
     msg_collection::PointArray lane;
+    msg_collection::RealPosition real;
 
     for (int i = 0; i < left_lane.size(); i++)
     {
         circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
         lane.left_lane_x.push_back(left_lane[i].x);
         lane.left_lane_y.push_back(left_lane[i].y);
+        real.left_lane_x_real.push_back(PxToM(700 - left_lane[i].y) + car_pose.x);
+        real.left_lane_y_real.push_back(PxToM(left_lane[i].x - 400) + car_pose.y);
     }
 
     vector<Point> right_lane = detect.getRightLane();
@@ -122,9 +126,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
         lane.right_lane_x.push_back(right_lane[i].x);
         lane.right_lane_y.push_back(right_lane[i].y);
+        real.right_lane_x_real.push_back(PxToM(700 - right_lane[i].y) + car_pose.x);
+        real.right_lane_y_real.push_back(PxToM(right_lane[i].x - 400) + car_pose.y);
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
+    // printf("x %d y %d ==> y %f x %f\n", middle_lane[middle_lane.size() - 1].x, middle_lane[middle_lane.size() - 1].y, PxToM(middle_lane[middle_lane.size() - 1].x - 400), PxToM(700 - middle_lane[middle_lane.size() - 1].y));
     vector<double> x_middle_lane;
     vector<double> y_middle_lane;
 
@@ -135,9 +142,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         lane.middle_lane_y.push_back(middle_lane[i].y);
         x_middle_lane.push_back(middle_lane[i].x);
         y_middle_lane.push_back(middle_lane[i].y);
+        real.middle_lane_x_real.push_back(PxToM(700 - middle_lane[i].y) + car_pose.x);
+        real.middle_lane_y_real.push_back(PxToM(middle_lane[i].x - 400) + car_pose.y);
     }
 
     pub_points.publish(lane);
+    pub_lane.publish(real);
 
     polynom.fit(x_middle_lane, y_middle_lane);
 
@@ -218,6 +228,7 @@ void Init()
     cam_params.camera_pos_z = 202.5;
     cam_params.cam_scale_x = (2 * cam_params.camera_pos_x * tan(cam_params.horizontal_fov / 2)) / cam_params.image_width;
     cam_params.cam_scale_y = (2 * cam_params.camera_pos_y * tan(cam_params.vertical_fov / 2)) / cam_params.image_height;
+    printf("hfov %f\n", cam_params.vertical_fov);
     BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH >> 1, DST_REMAPPED_HEIGHT >> 1, maptable);
 }
 

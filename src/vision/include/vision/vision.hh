@@ -11,6 +11,7 @@
 #include "geometry_msgs/Point.h"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
+#include "msg_collection/RealPosition.h"
 #include "imp/imph.hh"
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
@@ -40,6 +41,7 @@ ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
+ros::Publisher pub_lane;
 
 ros::Timer tim_30hz;
 

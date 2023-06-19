@@ -7,6 +7,7 @@
 #include "entity/entity.hh"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
+#include "msg_collection/RealPosition.h"
 #include "sensor_msgs/JointState.h"
 #include "math/math.hh"
 
@@ -33,6 +34,7 @@ typedef struct general_data_tag
     ros::Publisher pub_car_vel;
     ros::Subscriber sub_car_pose;
     ros::Subscriber sub_lines;
+    ros::Subscriber sub_real_lines;
     ros::Subscriber sub_car_data;
     ros::Subscriber sub_lidar_data;
     ros::Timer tim_60_hz;
@@ -40,11 +42,10 @@ typedef struct general_data_tag
     vector<Lane> left_lane;
     vector<Lane> middle_lane;
     vector<Lane> right_lane;
-    // vector<Lane> middle_right_target;
-    // vector<Lane> middle_left_target;
 
-    vector<RealLane> left_lane_from_car;
-    vector<RealLane> right_lane_position;
+    vector<RealLane> left_lane_real;
+    vector<RealLane> middle_lane_real;
+    vector<RealLane> right_lane_real;
 
     MachineState main_state;
 
@@ -120,29 +121,50 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
     general_instance.car_pose.th = msg->z;
 }
 
+void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
+{
+    general_instance.left_lane_real.clear();
+    general_instance.middle_lane_real.clear();
+    general_instance.right_lane_real.clear();
+
+    for (int i = 0; i < msg->left_lane_x_real.size(); i++)
+    {
+        RealLane real_lane;
+        real_lane.x = msg->left_lane_x_real[i];
+        real_lane.y = msg->left_lane_y_real[i];
+        general_instance.left_lane_real.push_back(real_lane);
+    }
+
+    for (int i = 0; i < msg->right_lane_x_real.size(); i++)
+    {
+        RealLane real_lane;
+        real_lane.x = msg->right_lane_x_real[i];
+        real_lane.y = msg->right_lane_y_real[i];
+        general_instance.right_lane_real.push_back(real_lane);
+    }
+
+    for (int i = 0; i < msg->middle_lane_x_real.size(); i++)
+    {
+        RealLane real_lane;
+        real_lane.x = msg->middle_lane_x_real[i];
+        real_lane.y = msg->middle_lane_y_real[i];
+        general_instance.middle_lane_real.push_back(real_lane);
+    }
+}
+
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 {
     int buffer_lane_x, buffer_lane_y;
     general_instance.left_lane.clear();
     general_instance.middle_lane.clear();
     general_instance.right_lane.clear();
-    // general_instance.middle_right_target.clear();
-    // general_instance.middle_left_target.clear();
 
     for (int i = 0; i < msg->left_lane_x.size(); i++)
     {
         Lane lane;
         lane.x = msg->left_lane_x[i];
         lane.y = msg->left_lane_y[i];
-
         general_instance.left_lane.push_back(lane);
-
-        // RealLane real_lane;
-        // real_lane.x = pixel_to_real(800 - general_instance.left_lane[i].y);
-        // real_lane.y = pixel_to_real(general_instance.left_lane[i].x - 400);
-        // general_instance.left_lane_from_car.push_back(real_lane);
-
-        // printf("left x %.2f || y %.2f\n", general_instance.left_lane_from_car[i].x, general_instance.left_lane_from_car[i].y);
     }
 
     for (int i = 0; i < msg->middle_lane_x.size(); i++)
@@ -150,9 +172,7 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
         Lane lane;
         lane.x = msg->middle_lane_x[i];
         lane.y = msg->middle_lane_y[i];
-        // printf("middle %.2f || %.2f\n", lane.x, lane.y);
         general_instance.middle_lane.push_back(lane);
-        // printf("real || x %.2f y %.2f\n\n", pixel_to_real(800 - general_instance.middle_lane[i].y), pixel_to_real(general_instance.middle_lane[i].x - 400));
     }
 
     for (int i = 0; i < msg->right_lane_x.size(); i++)
@@ -164,22 +184,6 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 
         general_instance.right_lane.push_back(lane);
     }
-
-    // for (int i = 0; i < msg->left_target_x.size(); i++)
-    // {
-    //     Lane lane;
-    //     lane.x = msg->left_target_x[i];
-    //     lane.y = msg->left_target_y[i];
-    //     general_instance.middle_left_target.push_back(lane);
-    // }
-
-    // for (int i = 0; i < msg->right_target_x.size(); i++)
-    // {
-    //     Lane lane;
-    //     lane.x = msg->right_target_x[i];
-    //     lane.y = msg->right_target_y[i];
-    //     general_instance.middle_right_target.push_back(lane);
-    // }
 
     data_validator |= 0b001;
     // printf("data validnya %d\n", data_validator);
