@@ -10,6 +10,8 @@ add_message_files(
     FILES
     PointArray.msg
     Obstacles.msg
+    RealPosition.msg
+
 )
 
 
