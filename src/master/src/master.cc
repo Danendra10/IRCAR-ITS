@@ -143,19 +143,19 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side)
         {
         case 10:
-            printf("TARGET KIRI\n");
+            // printf("TARGET KIRI\n");
             general_data->car_target.y = general_data->car_pose.y + -1 * pixel_to_real(400 - ((general_data->left_lane[left_lane_size - 1].x + general_data->middle_lane[middle_lane_size - 1].x) / 2));
             general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - ((general_data->left_lane[left_lane_size - 1].y + general_data->middle_lane[middle_lane_size - 1].y) / 2));
             break;
 
         case 20:
-            printf("TARGET KANAN\n");
+            // printf("TARGET KANAN\n");
             general_data->car_target.y = general_data->car_pose.y + pixel_to_real(((general_data->right_lane[right_lane_size - 1].x + general_data->middle_lane[middle_lane_size - 1].x) / 2) - 400);
             general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - ((general_data->right_lane[right_lane_size - 1].y + general_data->middle_lane[middle_lane_size - 1].y) / 2));
             break;
 
         default:
-            printf("TENGAH\n");
+            // printf("TENGAH\n");
             general_data->car_target.y = general_data->car_pose.y + pixel_to_real(400 - general_data->middle_lane[middle_lane_size - 1].x);
             general_data->car_target.x = general_data->car_pose.x + pixel_to_real(700 - general_data->middle_lane[middle_lane_size - 1].y);
             break;
@@ -177,6 +177,21 @@ void DecideCarTarget(general_data_ptr general_data)
 
 void RobotMovement(general_data_ptr data)
 {
+    // float rear_joint_x = (data->car_data.rear_left_wheel_joint + data->car_data.rear_right_wheel_joint) / 2;
+    // float rear_joint_y = rear_joint_x / tan(DEG2RAD(abs(data->car_pose.th)));
+    // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);
+    // float dist_y = data->car_target.y - rear_joint_y;
+    // float dist_x = data->car_target.x - rear_joint_x;
+
+    // float distance_between_wheels = (data->car_data.front_left_wheel_joint - data->car_data.rear_left_wheel_joint) / cos(data->car_pose.th);
+    // float ld = 6;//range scan bicycle model
+
+    // // float alpha = atan(dist_y / dist_x);
+
+    // float delta = atan((2 * distance_between_wheels * sin(alpha)) / ld);
+    // printf("dist wheels %f delta %f \n", distance_between_wheels, delta);
+    // data->car_vel.th = delta;
+    // data->car_vel.x = 1;
 }
 
 void TransmitData(general_data_ptr data)

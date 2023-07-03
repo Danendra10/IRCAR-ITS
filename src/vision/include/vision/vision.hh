@@ -102,6 +102,14 @@ std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int f
 std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, const std::vector<cv::Vec4i> &middleLines);
 cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
 
+void Detect(cv::Mat frame);
+void ROI(cv::Mat &frame);
+void Hough(cv::Mat frame,  std::vector<cv::Vec4i> &line);
+void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
+cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
+std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
+
 //============================================================
 
 #endif
