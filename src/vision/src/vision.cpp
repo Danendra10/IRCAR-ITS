@@ -7,7 +7,6 @@
  */
 
 #include "vision/vision.hh"
-int a,b,c;
 
 int main(int argc, char **argv)
 {
@@ -15,11 +14,6 @@ int main(int argc, char **argv)
     ros::NodeHandle NH;
     image_transport::ImageTransport IT(NH);
     ros::MultiThreadedSpinner MTS(0);
-
-    namedWindow("thresholding", WINDOW_AUTOSIZE);
-    createTrackbar("Thresh", "thresholding", &a, 200);
-    createTrackbar("Min Length", "thresholding", &b, 150);
-    createTrackbar("Max Gap", "thresholding", &c, 50);
 
     Init();
     LogParams();
@@ -31,6 +25,7 @@ int main(int argc, char **argv)
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
     pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
+    pub_lane = NH.advertise<msg_collection::RealPosition>("/real_lines", 1);
 
     MTS.spin();
 
@@ -57,7 +52,6 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     car_pose_msg.y = car_pose.y;
     car_pose_msg.z = car_pose.th;
     pub_car_pose.publish(car_pose_msg);
-    // ROS_ERROR("z = %f || w = %f || th = %f", msg->pose.pose.orientation.z, msg->pose.pose.orientation.w, car_pose.th);
 }
 
 void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
@@ -78,8 +72,7 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obstacles.push_back(raw_obstacle);
 
         // if (i % 10 == 0)
-            // printf("obs %f %f || dist %f\n", msg->x[i], raw_obstacle->x, raw_obstacle->dist);
-            // printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
+        //     printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
     }
 }
 
@@ -97,7 +90,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     InversePerspective(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, frame_gray_resize.data, maptable, frame_remapped.data);
 
-    /*line(raw_frame, Point(cam_params.image_width >> 1, 0), Point(cam_params.image_width >> 1, cam_params.image_height), Scalar(0, 0, 255), 1);
+    line(raw_frame, Point(cam_params.image_width >> 1, 0), Point(cam_params.image_width >> 1, cam_params.image_height), Scalar(0, 0, 255), 1);
     line(raw_frame, Point(0, cam_params.image_height >> 1), Point(cam_params.image_width, cam_params.image_height >> 1), Scalar(0, 0, 255), 1);
 
     LaneDetect detect(frame_remapped);
@@ -115,12 +108,15 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     vector<Point> left_lane = detect.getLeftLane();
 
     msg_collection::PointArray lane;
+    msg_collection::RealPosition real;
 
     for (int i = 0; i < left_lane.size(); i++)
     {
         circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
         lane.left_lane_x.push_back(left_lane[i].x);
         lane.left_lane_y.push_back(left_lane[i].y);
+        real.left_lane_x_real.push_back(pixel_to_real(700 - left_lane[i].y));
+        real.left_lane_y_real.push_back(-1 * pixel_to_real(400 - left_lane[i].x));
     }
 
     vector<Point> right_lane = detect.getRightLane();
@@ -130,9 +126,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
         lane.right_lane_x.push_back(right_lane[i].x);
         lane.right_lane_y.push_back(right_lane[i].y);
+        real.right_lane_x_real.push_back(pixel_to_real(700 - right_lane[i].y));
+        real.right_lane_y_real.push_back(pixel_to_real(right_lane[i].x - 400));
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
+    // printf("x %d y %d ==> y %f x %f\n", middle_lane[middle_lane.size() - 1].x, middle_lane[middle_lane.size() - 1].y, pixel_to_real(middle_lane[middle_lane.size() - 1].x - 400), pixel_to_real(700 - middle_lane[middle_lane.size() - 1].y));
     vector<double> x_middle_lane;
     vector<double> y_middle_lane;
 
@@ -144,39 +143,162 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         x_middle_lane.push_back(middle_lane[i].x);
         y_middle_lane.push_back(middle_lane[i].y);
     }
-
-    pub_points.publish(lane);
+    // printf("left %d right %d\n", lane.left_lane_x.size(), lane.right_lane_x.size());
+    // printf("left %d %d || mid %d %d || right %d %d\n", left_lane[left_lane.size() - 1].x, left_lane[left_lane.size() - 1].y, middle_lane[middle_lane.size() - 1].x, middle_lane[middle_lane.size() - 1].y, right_lane[right_lane.size() - 1].x, right_lane[right_lane.size() - 1].y);
 
     polynom.fit(x_middle_lane, y_middle_lane);
+    vector<double> x_path_lane;
+    vector<double> y_path_lane;
+    vector<double> x_path_lane_buf;
+    vector<double> y_path_lane_buf;
 
     for (int i = 0; i < 800; i++)
     {
         double x = i;
         double y = polynom.predict(x);
-        circle(lane_points, Point(x, y), 3, Scalar(0, 0, 255), -1);
+        if (y > 800 || y < 0)
+            continue;
+        circle(lane_points, Point(x, y), 3, Scalar(0, 255, 255), -1);
+        x_path_lane.push_back(x);
+        y_path_lane.push_back(y);
     }
 
     vector<double> weight = polynom.getW();
 
-    double a = weight[0];
+    double a = weight[2];
     double b = weight[1];
-    double c = weight[2];
+    double c = weight[0];
 
     putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
+    float max = 800;
+    float min = 0;
+    int index_limit;
+
+    float points_diff = x_middle_lane[x_middle_lane.size() - 1] - x_middle_lane[x_middle_lane.size() - 5];
+    printf("check %f %f %f %f\n", lane.right_lane_x.back(), x_path_lane[x_path_lane.size() - 1], lane.left_lane_x.back(), x_path_lane[0]);
+    int crop_graph, status_crop_graph;
+    if (a > 0)
+    {
+        crop_graph = 10;
+        {
+            if (lane.right_lane_x.back() < x_path_lane[x_path_lane.size() - 5])
+                status_crop_graph = 1;
+            if (lane.left_lane_x.back() > x_path_lane[5])
+                status_crop_graph = 2;
+            // else
+            //     status_crop_graph = 0;
+        }
+    }
+    else
+    {
+        crop_graph = 20;
+        {
+            if (lane.left_lane_x.back() > x_path_lane[5])
+                status_crop_graph = 1;
+            if (lane.right_lane_x.back() < x_path_lane[x_path_lane.size() - 5])
+                status_crop_graph = 2;
+            // else
+            //     status_crop_graph = 0;
+        }
+    }
+    // printf("ori %d max %d\n", x_path_lane.size(), index_limit);
+
+    switch (crop_graph)
+    {
+    case 10:
+        for (int i = 0; i < x_path_lane.size(); i++)
+        {
+            if (y_path_lane[i] < max)
+            {
+                max = y_path_lane[i];
+                index_limit = i;
+            }
+        }
+        break;
+    case 20:
+        for (int i = 0; i < x_path_lane.size(); i++)
+        {
+            if (y_path_lane[i] > min)
+            {
+                min = y_path_lane[i];
+                index_limit = i;
+            }
+        }
+    default:
+        break;
+    }
+
+    switch (status_crop_graph)
+    {
+    case 1: // hilangkan titik puncak-akhir
+        printf("masuk 1\n");
+        for (int i = 0; i < index_limit; i++)
+        {
+            if ((x_path_lane[i] > 0 || x_path_lane[i] < 800) && (y_path_lane[i] > 0 || y_path_lane[i] < 800))
+            {
+                lane.path_lane_x.push_back(x_path_lane[i]);
+                lane.path_lane_y.push_back(y_path_lane[i]);
+                // x_path_lane_buf.clear();
+                // y_path_lane_buf.clear();
+                x_path_lane_buf.push_back(x_path_lane[i]);
+                y_path_lane_buf.push_back(y_path_lane[i]);
+            }
+        }
+
+        break;
+    case 2: // hilangkan awal-titik puncak
+        printf("masuk 2\n");
+
+        for (int i = index_limit; i < x_path_lane.size() - 5; i++)
+        {
+            if ((x_path_lane[i] > 0 || x_path_lane[i] < 800) && (y_path_lane[i] > 0 || y_path_lane[i] < 800))
+            {
+                lane.path_lane_x.push_back(x_path_lane[i]);
+                lane.path_lane_y.push_back(y_path_lane[i]);
+                // x_path_lane_buf.clear();
+                // y_path_lane_buf.clear();
+                x_path_lane_buf.push_back(x_path_lane[i]);
+                y_path_lane_buf.push_back(y_path_lane[i]);
+            }
+        }
+    default:
+        // for (int i = 0; i < x_path_lane_buf.size(); i++)
+        // {
+        //     // lane.path_lane_x.clear();
+        //     // lane.path_lane_y.clear();
+        //     lane.path_lane_x.push_back(x_path_lane_buf[i]);
+        //     lane.path_lane_y.push_back(y_path_lane_buf[i]);
+        // }
+        break;
+    }
+
+    for (int i = 0; i < lane.path_lane_x.size(); i++)
+    {
+        // printf("points %f %f\n", lane.path_lane_x[i], lane.path_lane_y[i]);
+
+        circle(lane_points, Point(lane.path_lane_x[i], lane.path_lane_y[i]), 3, Scalar(0, 0, 255), -1);
+    }
+
+    for (int i = 0; i <= 180; i++)
+    {
+        float ld = 350;
+        float x = 400 + (ld * cos(DEG2RAD(i)));
+        float y = 700 - (ld * sin(DEG2RAD(i)));
+        circle(lane_points, Point(x, y), 3, Scalar(0, 255, 255), -1);
+        // printf("%d point %f %f\n", i, x, y);
+    }
+
+    pub_points.publish(lane);
+    pub_lane.publish(real);
+
     // imshow("frame", raw_frame);
     // record();
-    // setMouseCallback("frame_remapped", click_event);
+    // setMouseCallback("lane_points", click_event);
     // imshow("frame_remapped", frame_remapped);
     // imshow("final_lane", final_lane);
     // imshow("with obs", obs_frame);
-    imshow("lane_points", lane_points);*/
-
-    Mat line_bgr;
-    cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
-
-    // Detect(line_bgr);
-    Detect(raw_frame);  
+    imshow("lane_points", lane_points);
 
     waitKey(1);
 }
@@ -187,19 +309,19 @@ void click_event(int event, int x, int y, int flags, void *params)
 {
     if (event == EVENT_LBUTTONDOWN)
     {
-        float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
-        printf("CLICKED x %d y %d dist %f\n\n", x - 400, 800 - y, distance_on_frame);
+        // float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
+        // printf("CLICKED x %d y %d dist %f\n\n", x - 400, 800 - y, distance_on_frame);
+        printf("CLICKED %f %f\n", pixel_to_real(700 - y), pixel_to_real(x - 400));
     }
 }
 void record()
 {
-
     int frame_width = 800;
     int frame_height = 800;
 
     VideoWriter video;
 
-    video.open("/home/isabellej/Desktop/test.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
+    video.open("/home/isabellej/Desktop/test3.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
     for (int i = 0; i < 999; i++)
     {
         video.write(raw_frame);
@@ -232,6 +354,7 @@ void Init()
     cam_params.camera_pos_z = 202.5;
     cam_params.cam_scale_x = (2 * cam_params.camera_pos_x * tan(cam_params.horizontal_fov / 2)) / cam_params.image_width;
     cam_params.cam_scale_y = (2 * cam_params.camera_pos_y * tan(cam_params.vertical_fov / 2)) / cam_params.image_height;
+    printf("hfov %f\n", cam_params.vertical_fov);
     BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH >> 1, DST_REMAPPED_HEIGHT >> 1, maptable);
 }
 
@@ -562,203 +685,4 @@ Mat DrawObsPoints(const vector<ObstaclesPtr> &points)
     // cv::line(frame, cv::Point(500, 400), cv::Point(400, 700), cv::Scalar(255, 0, 0), 2);
 
     return frame;
-}
-
-void Detect(cv::Mat frame)
-{
-    cv::Mat frame_gray, frame_canny;
-    cv::Mat result = frame.clone();
-    std::vector<cv::Vec4i> line_hough;
-
-    cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
-    cv::GaussianBlur(frame_gray, frame_gray, cv::Size(5,5), 0);
-    cv::Canny(frame_gray, frame_canny, 25, 50);
-    ROI(frame_canny);
-    Hough(frame_canny, line_hough);
-    Display(result, line_hough, 0, 255, 0, 0.5);
-    Average(result, line_hough);
-    Display(result, line_hough, 255, 255, 255, 0.5);
-    cv::imshow("edge", frame_canny);
-    cv::imshow("result", result);
-}
-
-void ROI(cv::Mat &frame)
-{
-    cv::Mat frame_mask(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
-    std::vector<cv::Point> ROI;
-
-    // ROI.push_back(cv::Point(200, frame.rows));
-    // ROI.push_back(cv::Point(1100, frame.rows));
-    // ROI.push_back(cv::Point(555, 290));
-    // ROI.push_back(cv::Point(545, 290));
-    // ROI.push_back(cv::Point(0, frame.rows-20));
-    // ROI.push_back(cv::Point(frame.cols/2-100, frame.rows*3/5));
-    // ROI.push_back(cv::Point(frame.cols/2+100, frame.rows*3/5));
-    // ROI.push_back(cv::Point(frame.cols, frame.rows-20));
-    ROI.push_back(cv::Point(0, frame.rows/2+20));
-    ROI.push_back(cv::Point(frame.cols, frame.rows/2+20));
-    ROI.push_back(cv::Point(frame.cols, frame.rows-200));//122
-    ROI.push_back(cv::Point(0, frame.rows-200));
-    fillConvexPoly(frame_mask, ROI, cv::Scalar(255));
-    cv::bitwise_and(frame, frame_mask, frame);
-
-    // cv::imshow("mask", frame_mask);
-}   
-
-void Hough(cv::Mat frame,  std::vector<cv::Vec4i> &line)
-{
-    cv::HoughLinesP(frame, line, 2, CV_PI/180, 100, 70, 5);//100,115,15
-}
-
-void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity)
-{   
-    cv::Mat draw(frame.rows, frame.cols, CV_8UC3, cv::Scalar(0));
-    if(lines.size() > 0)
-        for (size_t i = 0; i < lines.size(); i++)
-        {
-            cv::Vec4i line = lines[i];
-            cv::line(draw, cv::Point(line[0], line[1]), cv::Point(line[2], line[3]), cv::Scalar(b_, g_, r_), 10);
-        }
-
-    cv::addWeighted(draw, intensity, frame, 1.0, 0.0, frame);
-
-    // cv::imshow("line", draw);
-}
-
-void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
-{
-    std::vector<cv::Vec2f> left_fit;
-    std::vector<cv::Vec2f> right_fit;
-    int temp = 0;
-
-    // for (size_t i = 0; i < lines.size(); i++)
-    // {
-    //     double x1 = lines[i][0];
-    //     double y1 = lines[i][1];
-    //     double x2 = lines[i][2];
-    //     double y2 = lines[i][3];
-
-    //     double slope = (y2-y1)/(x2-x1);
-    //     double intercept = y1-(slope*x1);
-
-    //     // Print the coefficients of the fitted polynomial
-    //     // std::cout << "Slope: " << slope << std::endl;
-    //     // std::cout << "Intercept: " << coeffs[1] << std::endl;
-
-    //     if(slope < 0 && lines[0][0] >= frame.cols/4.0)
-    //     {
-    //         lines.erase(lines.begin()+(i-temp));
-    //         temp++;
-    //     }
-    //     else if(slope > 0 && lines[0][0] <= 3*frame.cols/4.0)
-    //     {
-    //         lines.erase(lines.begin()+(i-temp));
-    //         temp++;
-    //     }
-    // }
-
-    for (size_t i = 0; i < lines.size(); i++)
-    {
-        double x1 = lines[i][0];
-        double y1 = lines[i][1];
-        double x2 = lines[i][2];
-        double y2 = lines[i][3];
-
-        double slope = (y2-y1)/(x2-x1);
-        double intercept = y1-(slope*x1);
-
-        // Print the coefficients of the fitted polynomial
-        // std::cout << "Slope: " << slope << std::endl;
-        // std::cout << "Intercept: " << coeffs[1] << std::endl;
-
-        if (slope < 0 && x1 < frame.cols/2.0)
-        {
-            left_fit.push_back(cv::Vec2f(slope, intercept));
-        }
-        else if (slope > 0 && x1 > frame.cols/2.0)
-        {
-            right_fit.push_back(cv::Vec2f(slope, intercept));
-        }
-    }
-
-    cv::Vec2f left_fit_avg = VectorAvg(left_fit);
-    cv::Vec2f right_fit_avg = VectorAvg(right_fit);
-
-    std::cout<<"Left : "<<left_fit_avg<<std::endl;
-    std::cout<<"Right : "<<right_fit_avg<<std::endl;
-
-    std::vector<cv::Vec4i> line_left = MakePoints(frame, left_fit_avg);
-    std::vector<cv::Vec4i> line_right = MakePoints(frame, right_fit_avg);
-    std::vector<cv::Vec4i> line_mid, line_target;
-
-    std::cout<<line_left[0]<<" "<<line_right[0]<<std::endl;
-    if(!std::isnan(left_fit_avg[0]) && !std::isnan(right_fit_avg[0]))
-    {   
-        int x1 = (line_left[0][0] + line_right[0][0])/2.0;
-        int y1 = (line_left[0][1] + line_right[0][1])/2.0;
-        int x2 = (line_left[0][2] + line_right[0][2])/2.0;
-        int y2 = (line_left[0][3] + line_right[0][3])/2.0;
-        line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
-
-        int mid_x1 = (x1 + line_right[0][0])/2.0;
-        int mid_y1 = (y1 + line_right[0][1])/2.0;
-        int mid_x2 = (x2 + line_right[0][2])/2.0;
-        int mid_y2 = (y2 + line_right[0][3])/2.0;
-        line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
-    }
-    else if(std::isnan(left_fit_avg[0]))
-    {
-        ROS_WARN("KIRI HILANG");
-        int x1 = line_right[0][0]/2.0;
-        int y1 = line_right[0][1];
-        int x2 = line_right[0][2]/2.0;
-        int y2 = line_right[0][3];
-        std::cout<<x1<<" "<<x2<<std::endl;
-        line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
-    }
-    else if(std::isnan(right_fit_avg[0]))
-    {
-        ROS_WARN("KANAN HILANG");
-        int x1 = line_left[0][0]+(abs(line_left[0][0])/2.0);
-        int y1 = line_left[0][1];
-        int x2 = line_left[0][2]+(abs(line_left[0][2])/2.0);
-        int y2 = line_left[0][3];
-        std::cout<<x1<<" "<<x2<<std::endl;
-        line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
-    }
-    else
-    {
-        ROS_ERROR("WATEFAK");
-    }
-
-    Display(frame, line_left, 255, 0, 0, 1);
-    Display(frame, line_right, 0, 0, 255, 1);
-    Display(frame, line_mid, 255, 0, 255, 1);
-    Display(frame, line_target, 0, 255, 255, 1);
-}
-
-cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec)
-{
-    float avg_x = 0;
-    float avg_y = 0;
-    for (int i = 0; i < in_vec.size(); i++)
-    {
-        avg_x += in_vec[i][0];
-        avg_y += in_vec[i][1];
-    }
-    avg_x /= in_vec.size();
-    avg_y /= in_vec.size();
-    return cv::Vec2f(avg_x, avg_y);
-}
-
-std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI)
-{
-    float slope = lineSI[0];
-    float intercept = lineSI[1];
-    int y1 = frame.rows;
-    int y2 = (int)(4*y1/7.0);
-    int x1 = (int)((y1 - intercept) / slope);
-    int x2 = (int)((y2 - intercept) / slope);
-
-    return std::vector<cv::Vec4i>{cv::Vec4i(x1, y1, x2, y2)};
 }
