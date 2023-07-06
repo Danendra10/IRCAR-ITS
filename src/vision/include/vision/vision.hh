@@ -41,7 +41,11 @@ ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
+<<<<<<< HEAD
 ros::Publisher pub_target;
+=======
+ros::Publisher pub_lane;
+>>>>>>> master
 
 ros::Timer tim_30hz;
 
