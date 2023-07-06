@@ -38,3 +38,7 @@ target_link_libraries(lidar ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib)
 
 add_executable(anderdevelop_cpp src/anderdevelop.cpp)
 target_link_libraries(anderdevelop_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
+
+
+add_executable(road_sign_detector src/road_sign_detector.cpp)
+target_link_libraries(road_sign_detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)

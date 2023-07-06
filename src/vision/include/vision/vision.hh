@@ -1,5 +1,5 @@
-#ifndef __VISION_HH_
-#define __VISION_HH_
+#ifndef _VISION_HH
+#define _VISION_HH
 
 #include "sensor_msgs/Image.h"
 #include <cv_bridge/cv_bridge.h>
@@ -11,6 +11,7 @@
 #include "geometry_msgs/Point.h"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
+#include "msg_collection/RealPosition.h"
 #include "imp/imph.hh"
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
@@ -40,6 +41,7 @@ ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
+ros::Publisher pub_target;
 
 ros::Timer tim_30hz;
 
@@ -68,6 +70,9 @@ Mat wrapped_frame;
 Mat resized;
 Mat grayresized;
 // Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
+
+int target_x;
+int target_y;
 
 PolynomialRegression polynom(DEGREE);
 
@@ -109,6 +114,7 @@ void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r
 void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
 cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
 std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
+void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines);
 
 //============================================================
 
