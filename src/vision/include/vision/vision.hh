@@ -71,8 +71,8 @@ Mat resized;
 Mat grayresized;
 // Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
 
-int target_x;
-int target_y;
+int x_target;
+int y_target;
 
 PolynomialRegression polynom(DEGREE);
 

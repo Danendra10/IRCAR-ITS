@@ -730,21 +730,26 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         int mid_y2 = (y2 + line_right[0][3]) / 2.0;
         line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
 
-        target_x = mid_x2;
-        target_y = mid_y2;
-        
-        cv::circle(frame, cv::Point(target_x, target_y), 5, cv::Scalar(255), 10);
-        // std::cout<<target_x<<"  "<<target_y<<std::endl;
+        x_target = mid_x2;
+        y_target = mid_y2;
+
+        cv::circle(frame, cv::Point(x_target, y_target), 5, cv::Scalar(255), 10);
+        // std::cout<<x_target<<"  "<<y_target<<std::endl;
         msg_collection::RealPosition lane;
+        float dist_x = 800 - y_target;
+        float dist_y = x_target - 400;
 
-        lane.target_x = 700-target_y;
-        lane.target_y = target_x-400;
-        // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
+        float distance = pixel_to_real(sqrt(pow(dist_x, 2) + pow(dist_y, 2)));
+        float angle_diff = atan(dist_x / dist_y);
+        if (dist_y < 0)
+            angle_diff += DEG2RAD(180);
 
-        // lane.target_x = pixel_to_real(800 - target_y);
-        // lane.target_y = pixel_to_real(target_x - 400);
-        // printf("nnnn %.2f %.2f\n", lane.target_x, lane.target_y);
-        
+        printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
+
+        lane.target_x = distance * sin(angle_diff);
+        lane.target_y = distance * cos(angle_diff);
+        printf("bef %f %f || nnnn %f %f\n", dist_x, dist_y, lane.target_x, lane.target_y);
+
         pub_target.publish(lane);
     }
     else if (std::isnan(left_fit_avg[0]))
@@ -774,15 +779,26 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         int mid_y2 = (line_mid[0][3] + line_right[0][3])/2.0;
         line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
 
-        target_x = mid_x2;
-        target_y = mid_y2;
-        
-        cv::circle(frame, cv::Point(target_x, target_y), 5, cv::Scalar(255), 10);
-        // std::cout<<target_x<<"  "<<target_y<<std::endl;
+        x_target = mid_x2;
+        y_target = mid_y2;
+
+        cv::circle(frame, cv::Point(x_target, y_target), 5, cv::Scalar(255), 10);
+        // std::cout<<x_target<<"  "<<y_target<<std::endl;
         msg_collection::RealPosition lane;
-        lane.target_x = 700-target_y;
-        lane.target_y = target_x-400;
-        // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
+        float dist_x = 800 - y_target;
+        float dist_y = x_target - 400;
+
+        float distance = pixel_to_real(sqrt(pow(dist_x, 2) + pow(dist_y, 2)));
+        float angle_diff = atan(dist_x / dist_y);
+        if (dist_y < 0)
+            angle_diff += DEG2RAD(180);
+
+        printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
+
+        lane.target_x = distance * sin(angle_diff);
+        lane.target_y = distance * cos(angle_diff);
+        printf("bef %f %f || nnnn %f %f\n", dist_x, dist_y, lane.target_x, lane.target_y);
+
         pub_target.publish(lane);
 
     }
@@ -865,4 +881,3 @@ void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
         cv::rectangle(frame, window, cv::Scalar(0, 255, 0), 1);
     }
 }
-

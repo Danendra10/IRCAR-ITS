@@ -89,7 +89,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
         float dst = sqrt(pow(raw_obs.x,2)+pow(raw_obs.y,2));
-        // printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y,dst);
+        // if (i % 5 == 0)
+        //     printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y, dst);
 
         Obstacles obs;
         obs.x = msg->x[i] + general_instance.car_pose.x;
