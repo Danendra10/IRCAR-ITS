@@ -7,7 +7,7 @@
  */
 
 #include "vision/vision.hh"
-int a,b,c;
+int a, b, c;
 
 int main(int argc, char **argv)
 {
@@ -79,8 +79,8 @@ void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obstacles.push_back(raw_obstacle);
 
         // if (i % 10 == 0)
-            // printf("obs %f %f || dist %f\n", msg->x[i], raw_obstacle->x, raw_obstacle->dist);
-            // printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
+        // printf("obs %f %f || dist %f\n", msg->x[i], raw_obstacle->x, raw_obstacle->dist);
+        // printf("obs %f %f || dist %f\n", raw_obstacle->x, raw_obstacle->y, raw_obstacle->dist);
     }
 }
 
@@ -116,12 +116,15 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     vector<Point> left_lane = detect.getLeftLane();
 
     msg_collection::PointArray lane;
+    msg_collection::RealPosition real;
 
     for (int i = 0; i < left_lane.size(); i++)
     {
         circle(lane_points, left_lane[i], 3, Scalar(255, 0, 0), -1);
         lane.left_lane_x.push_back(left_lane[i].x);
         lane.left_lane_y.push_back(left_lane[i].y);
+        real.left_lane_x_real.push_back(PxToM(700 - left_lane[i].y) + car_pose.x);
+        real.left_lane_y_real.push_back(PxToM(left_lane[i].x - 400) + car_pose.y);
     }
 
     vector<Point> right_lane = detect.getRightLane();
@@ -131,9 +134,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         circle(lane_points, right_lane[i], 3, Scalar(0, 255, 0), -1);
         lane.right_lane_x.push_back(right_lane[i].x);
         lane.right_lane_y.push_back(right_lane[i].y);
+        real.right_lane_x_real.push_back(PxToM(700 - right_lane[i].y) + car_pose.x);
+        real.right_lane_y_real.push_back(PxToM(right_lane[i].x - 400) + car_pose.y);
     }
 
     vector<Point> middle_lane = detect.calcMiddleLane();
+    // printf("x %d y %d ==> y %f x %f\n", middle_lane[middle_lane.size() - 1].x, middle_lane[middle_lane.size() - 1].y, PxToM(middle_lane[middle_lane.size() - 1].x - 400), PxToM(700 - middle_lane[middle_lane.size() - 1].y));
     vector<double> x_middle_lane;
     vector<double> y_middle_lane;
 
@@ -144,9 +150,12 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         lane.middle_lane_y.push_back(middle_lane[i].y);
         x_middle_lane.push_back(middle_lane[i].x);
         y_middle_lane.push_back(middle_lane[i].y);
+        real.middle_lane_x_real.push_back(PxToM(700 - middle_lane[i].y) + car_pose.x);
+        real.middle_lane_y_real.push_back(PxToM(middle_lane[i].x - 400) + car_pose.y);
     }
 
     pub_points.publish(lane);
+    pub_lane.publish(real);
 
     polynom.fit(x_middle_lane, y_middle_lane);
 
@@ -165,14 +174,14 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
 
     putText(lane_points, "equation : " + to_string(a) + "x^2 + " + to_string(b) + "x + " + to_string(c), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1, 8, false);
 
-    // imshow("frame", raw_frame);
-    // record();
+
     // setMouseCallback("frame_remapped", click_event);
     // imshow("frame_remapped", frame_remapped);
     // imshow("final_lane", final_lane);
     // imshow("with obs", obs_frame);
     imshow("lane_points", lane_points);*/
-
+    // imshow("frame", raw_frame);
+    // record();
     Mat line_bgr;
     cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
 
@@ -200,8 +209,8 @@ void record()
 
     VideoWriter video;
 
-    video.open("/home/isabellej/Desktop/test.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
-    for (int i = 0; i < 999; i++)
+    video.open("/home/isabellej/Desktop/nihh.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
+    for (int i = 0; i < 7000; i++)
     {
         video.write(raw_frame);
         printf("%d recording.\n", i);
@@ -233,6 +242,7 @@ void Init()
     cam_params.camera_pos_z = 202.5;
     cam_params.cam_scale_x = (2 * cam_params.camera_pos_x * tan(cam_params.horizontal_fov / 2)) / cam_params.image_width;
     cam_params.cam_scale_y = (2 * cam_params.camera_pos_y * tan(cam_params.vertical_fov / 2)) / cam_params.image_height;
+    printf("hfov %f\n", cam_params.vertical_fov);
     BuildIPMTable(SRC_RESIZED_WIDTH, SRC_RESIZED_HEIGHT, DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH >> 1, DST_REMAPPED_HEIGHT >> 1, maptable);
 }
 
@@ -572,16 +582,28 @@ void Detect(cv::Mat frame)
     std::vector<cv::Vec4i> line_hough;
 
     cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
-    cv::GaussianBlur(frame_gray, frame_gray, cv::Size(5,5), 0);
+    cv::GaussianBlur(frame_gray, frame_gray, cv::Size(5, 5), 0);
     cv::Canny(frame_gray, frame_canny, 25, 50);
     ROI(frame_canny);
     Hough(frame_canny, line_hough);
+<<<<<<<
     // SlidingWindows(result, line_hough);
     Display(result, line_hough, 0, 255, 0, 0.2);
+=======
+    // SlidingWindows(result, line_hough);
+    Display(result, line_hough, 0, 255, 0, 0.5);
+>>>>>>>
     Average(result, line_hough);
+<<<<<<<
     // Display(result, line_hough, 255, 255, 255, 0.5);
     cv::imshow("edge", frame_canny);
     // setMouseCallback("result", click_event);
+=======
+    Display(result, line_hough, 255, 255, 255, 0.5);
+    // cv::imshow("edge", frame_canny);
+    setMouseCallback("result", click_event);
+
+>>>>>>>
     cv::imshow("result", result);
 }
 
@@ -594,6 +616,7 @@ void ROI(cv::Mat &frame)
     // ROI.push_back(cv::Point(1100, frame.rows));
     // ROI.push_back(cv::Point(555, 290));
     // ROI.push_back(cv::Point(545, 290));
+<<<<<<<
 
     ROI.push_back(cv::Point(0, frame.rows/2+40));//top left
     ROI.push_back(cv::Point(frame.cols, frame.rows/2+40));//top right
@@ -608,23 +631,47 @@ void ROI(cv::Mat &frame)
     Ignore.push_back(cv::Point(2*frame.cols/3+100, frame.rows-122));
     Ignore.push_back(cv::Point(0, frame.rows-122));
 
+=======
+
+    ROI.push_back(cv::Point(0, frame.rows / 2 + 40));          // top left
+    ROI.push_back(cv::Point(frame.cols, frame.rows / 2 + 40)); // top right
+    ROI.push_back(cv::Point(frame.cols, frame.rows - 122));    // bottom right
+    ROI.push_back(cv::Point(0, frame.rows - 122));             // bottom left
+
+    std::vector<cv::Point> Ignore;
+
+    Ignore.push_back(cv::Point(0, frame.rows - 122));
+    Ignore.push_back(cv::Point(frame.cols / 2 - 200, frame.rows / 2 + 70));
+    Ignore.push_back(cv::Point(frame.cols / 2 + 50, frame.rows / 2 + 70));
+    Ignore.push_back(cv::Point(2 * frame.cols / 3 + 100, frame.rows - 122));
+
+>>>>>>>
     fillConvexPoly(frame_mask, ROI, cv::Scalar(255));
     fillConvexPoly(frame_mask, Ignore, cv::Scalar(0));
     // cv::rectangle(frame_mask, cv::Point(245, 795), cv::Point(555, 636), cv::Scalar(0), CV_FILLED);
     cv::bitwise_and(frame, frame_mask, frame);
 
+<<<<<<<
     cv::imshow("mask", frame_mask);
 }   
+=======
+    // cv::imshow("mask", frame_mask);
+}
+>>>>>>>
 
-void Hough(cv::Mat frame,  std::vector<cv::Vec4i> &line)
+void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line)
 {
+<<<<<<<
     cv::HoughLinesP(frame, line, 2, CV_PI/180, 94, 36, 14);//100,115,15
+=======
+    cv::HoughLinesP(frame, line, 2, CV_PI / 180, 94, 36, 14); // 100,115,15
+>>>>>>>
 }
 
 void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity)
-{   
+{
     cv::Mat draw(frame.rows, frame.cols, CV_8UC3, cv::Scalar(0));
-    if(lines.size() > 0)
+    if (lines.size() > 0)
         for (size_t i = 0; i < lines.size(); i++)
         {
             cv::Vec4i line = lines[i];
@@ -676,8 +723,13 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         double x2 = lines[i][2];
         double y2 = lines[i][3];
 
+<<<<<<<
         slope = (y2-y1)/(x2-x1);
         double intercept = y1-(slope*x1);
+=======
+        double slope = (y2 - y1) / (x2 - x1);
+        double intercept = y1 - (slope * x1);
+>>>>>>>
 
         // Print the coefficients of the fitted polynomial
         // std::cout << "Slope: " << slope << std::endl;
@@ -705,6 +757,7 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
     std::vector<cv::Vec4i> line_right = MakePoints(frame, right_fit_avg);
     std::vector<cv::Vec4i> line_mid, line_target;
 
+<<<<<<<
     // std::cout<<line_left[0]<<" "<<line_right[0]<<std::endl;
     if(!std::isnan(left_fit_avg[0]) && !std::isnan(right_fit_avg[0]))
     {   
@@ -712,13 +765,23 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         int y1 = (line_left[0][1] + line_right[0][1])/2.0;
         int x2 = (line_left[0][2] + line_right[0][2])/2.0;
         int y2 = (line_left[0][3] + line_right[0][3])/2.0;
+=======
+    // std::cout<<line_left[0]<<" "<<line_right[0]<<std::endl;
+    if (!std::isnan(left_fit_avg[0]) && !std::isnan(right_fit_avg[0]))
+    {
+        int x1 = (line_left[0][0] + line_right[0][0]) / 2.0;
+        int y1 = (line_left[0][1] + line_right[0][1]) / 2.0;
+        int x2 = (line_left[0][2] + line_right[0][2]) / 2.0;
+        int y2 = (line_left[0][3] + line_right[0][3]) / 2.0;
+>>>>>>>
         line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
 
-        int mid_x1 = (x1 + line_right[0][0])/2.0;
-        int mid_y1 = (y1 + line_right[0][1])/2.0;
-        int mid_x2 = (x2 + line_right[0][2])/2.0;
-        int mid_y2 = (y2 + line_right[0][3])/2.0;
+        int mid_x1 = (x1 + line_right[0][0]) / 2.0;
+        int mid_y1 = (y1 + line_right[0][1]) / 2.0;
+        int mid_x2 = (x2 + line_right[0][2]) / 2.0;
+        int mid_y2 = (y2 + line_right[0][3]) / 2.0;
         line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
+<<<<<<<
 
         target_x = mid_x2;
         target_y = mid_y2;
@@ -731,14 +794,33 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
         pub_target.publish(lane);
 
+=======
+
+        target_x = (mid_x1 + mid_x2) / 2.0;
+        target_y = (mid_y1 + mid_y2) / 2.0;
+
+        cv::circle(frame, cv::Point(target_x, target_y), 5, cv::Scalar(255), 10);
+        // std::cout<<target_x<<"  "<<target_y<<std::endl;
+        msg_collection::RealPosition lane;
+        lane.target_x = pixel_to_real(800 - target_y);
+        lane.target_y = pixel_to_real(target_x - 400);
+        printf("nnnn %.2f %.2f\n", lane.target_x, lane.target_y);
+        pub_target.publish(lane);
+>>>>>>>
     }
-    else if(std::isnan(left_fit_avg[0]))
+    else if (std::isnan(left_fit_avg[0]))
     {
+<<<<<<<
         // ROS_WARN("KIRI HILANG");
         int x1 = line_right[0][0]/2.0;
+=======
+        // ROS_WARN("KIRI HILANG");
+        int x1 = line_right[0][0] / 2.0;
+>>>>>>>
         int y1 = line_right[0][1];
-        int x2 = line_right[0][2]/2.0;
+        int x2 = line_right[0][2] / 2.0;
         int y2 = line_right[0][3];
+<<<<<<<
         // std::cout<<x1<<" "<<x2<<std::endl;
         if(right_fit_avg[0]<=1)
         {
@@ -770,13 +852,22 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
         pub_target.publish(lane);
 
+=======
+        // std::cout<<x1<<" "<<x2<<std::endl;
+        line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
+>>>>>>>
     }
-    else if(std::isnan(right_fit_avg[0]))
+    else if (std::isnan(right_fit_avg[0]))
     {
+<<<<<<<
         // ROS_WARN("KANAN HILANG");
         int x1 = line_left[0][0]+(abs(line_left[0][0])/2.0);
+=======
+        // ROS_WARN("KANAN HILANG");
+        int x1 = line_left[0][0] + (abs(line_left[0][0]) / 2.0);
+>>>>>>>
         int y1 = line_left[0][1];
-        int x2 = line_left[0][2]+(abs(line_left[0][2])/2.0);
+        int x2 = line_left[0][2] + (abs(line_left[0][2]) / 2.0);
         int y2 = line_left[0][3];
         // std::cout<<x1<<" "<<x2<<std::endl;
         line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
@@ -810,14 +901,20 @@ std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI)
 {
     float slope = lineSI[0];
     float intercept = lineSI[1];
+<<<<<<<
     int y1 = frame.rows-150;
     int y2 = (int)(3*frame.rows/5.0);
+=======
+    int y1 = frame.rows - 100;
+    int y2 = (int)(3 * frame.rows / 5.0);
+>>>>>>>
     int x1 = (int)((y1 - intercept) / slope);
     int x2 = (int)((y2 - intercept) / slope);
 
     return std::vector<cv::Vec4i>{cv::Vec4i(x1, y1, x2, y2)};
 }
 
+<<<<<<<
 void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
 {   
     std::vector<cv::Rect> windows;
@@ -850,3 +947,38 @@ void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
         cv::rectangle(frame, window, cv::Scalar(0, 255, 0), 1);
     }
 }
+
+=======
+void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
+{
+    std::vector<cv::Rect> windows;
+    const int numWindows = 20;
+    const int windowWidth = 100;
+    const int windowHeight = 20;
+    int xMid[lines.size()];
+    // int windowStep = (frame.rows/2) / numWindows;
+
+    for (size_t i = 0; i < lines.size(); i++)
+    {
+        cv::Vec4i line = lines[i];
+        xMid[i] = (line[0] + line[3]) / 2.0;
+        // std::cout<<xMid[i]<<std::endl;
+    }
+
+    for (size_t i = 0; i < numWindows; i++)
+    {
+        int yTop = frame.rows - (i + 1) * windowHeight;
+        int xLeft = xMid[i] - windowWidth / 2.0;
+
+        cv::Rect window(xLeft, yTop, windowWidth, windowHeight);
+
+        windows.push_back(window);
+    }
+
+    for (size_t i = 0; i < windows.size(); i++)
+    {
+        cv::Rect window = windows[i];
+        cv::rectangle(frame, window, cv::Scalar(0, 255, 0), 1);
+    }
+}
+>>>>>>>

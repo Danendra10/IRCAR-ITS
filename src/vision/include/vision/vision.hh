@@ -1,5 +1,5 @@
-#ifndef __VISION_HH_
-#define __VISION_HH_
+#ifndef _VISION_HH
+#define _VISION_HH
 
 #include "sensor_msgs/Image.h"
 #include <cv_bridge/cv_bridge.h>

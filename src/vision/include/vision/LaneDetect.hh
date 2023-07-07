@@ -279,7 +279,7 @@ public:
 
         for (int i = 0; i < left.size() && i < right.size(); i++)
         {
-            if (left[i].x != 0 && left[i].y != 0)
+            if (left[i].x != 0 && left[i].y != 0 && abs(left[i].x) < 800 && abs(left[i].y) < 800)
             {
                 calc_buffer_x_left = left[i].x;
                 calc_buffer_y_left = left[i].y;
@@ -290,7 +290,7 @@ public:
                 left[i].y = calc_buffer_y_left;
             }
 
-            if (right[i].x != 0 && right[i].y != 0)
+            if (right[i].x != 0 && right[i].y != 0 && abs(left[i].x) < 800 && abs(left[i].y) < 800)
             {
                 calc_buffer_x_right = right[i].x;
                 calc_buffer_y_right = right[i].y;
