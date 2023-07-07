@@ -181,19 +181,19 @@ void DecideCarTarget(general_data_ptr general_data)
 
 void RobotMovement(general_data_ptr data)
 {
-    // PURE PURSUIT
+    // // PURE PURSUIT
     float ld = 10;
-    for (int i = 0; i < data->path_lane.size(); i++)
-    {
-        float dist = sqrt(pow(data->path_lane[i].x, 2) + pow(data->path_lane[i].y, 2));
-        // printf("i %d point %f %f dist %f diff %f\n", i, data->path_lane[i].x, data->path_lane[i].y, dist, abs(dist - ld));
-        if (abs(dist - ld) < 0.01)
-        {
-            data->car_target.x = data->path_lane[i].x;
-            data->car_target.y = data->path_lane[i].y;
-            break;
-        }
-    }
+    // for (int i = 0; i < data->path_lane.size(); i++)
+    // {
+    //     float dist = sqrt(pow(data->path_lane[i].x, 2) + pow(data->path_lane[i].y, 2));
+    //     // printf("i %d point %f %f dist %f diff %f\n", i, data->path_lane[i].x, data->path_lane[i].y, dist, abs(dist - ld));
+    //     if (abs(dist - ld) < 0.01)
+    //     {
+    //         data->car_target.x = data->path_lane[i].x;
+    //         data->car_target.y = data->path_lane[i].y;
+    //         break;
+    //     }
+    // }
 
     printf("pose %f %f TARGET === x %f y %f\n", data->car_pose.x, data->car_pose.y, data->car_target.x, data->car_target.y);
 
@@ -205,20 +205,21 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    // printf("delta %f\n", delta);
+    printf("delta %f\n", delta);
     if (abs(delta) < 0.05)
     {
         data->car_vel.th = 0;
-        data->car_vel.x = 2.7;
+        data->car_vel.x = 5.4;
     }
 
     else
     {
+        data->car_vel.x = 5.4;
         if (data->car_target.y < 0)
-            data->car_vel.th = RAD2DEG(delta);
+            data->car_vel.th = -RAD2DEG(delta)/(data->car_vel.x/0.15);
         else
-            data->car_vel.th = -1 * RAD2DEG(delta);
-        data->car_vel.x = 1.7;
+            data->car_vel.th = -RAD2DEG(delta)/(data->car_vel.x/0.15);
+
     }
     printf("v th %f\n", data->car_vel.th);
     // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);

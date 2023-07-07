@@ -88,7 +88,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
-        printf("lidar || x %.2f y %.2f\n", raw_obs.x, raw_obs.y);
+        float dst = sqrt(pow(raw_obs.x,2)+pow(raw_obs.y,2));
+        // printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y,dst);
 
         Obstacles obs;
         obs.x = msg->x[i] + general_instance.car_pose.x;
@@ -126,35 +127,38 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 
 void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 {
-    general_instance.left_lane_real.clear();
-    general_instance.middle_lane_real.clear();
-    general_instance.right_lane_real.clear();
+    // general_instance.left_lane_real.clear();
+    // general_instance.middle_lane_real.clear();
+    // general_instance.right_lane_real.clear();
 
-    for (int i = 0; i < msg->left_lane_x_real.size(); i++)
-    {
-        RealLane real_lane;
-        real_lane.x = msg->left_lane_x_real[i];
-        real_lane.y = msg->left_lane_y_real[i];
-        general_instance.left_lane_real.push_back(real_lane);
-        // printf("i %d lefttt real %f %f\n", i, general_instance.left_lane_real[i].x, general_instance.left_lane_real[i].y);
-    }
+    // for (int i = 0; i < msg->left_lane_x_real.size(); i++)
+    // {
+    //     RealLane real_lane;
+    //     real_lane.x = msg->left_lane_x_real[i];
+    //     real_lane.y = msg->left_lane_y_real[i];
+    //     general_instance.left_lane_real.push_back(real_lane);
+    //     // printf("i %d lefttt real %f %f\n", i, general_instance.left_lane_real[i].x, general_instance.left_lane_real[i].y);
+    // }
 
-    for (int i = 0; i < msg->right_lane_x_real.size(); i++)
-    {
-        RealLane real_lane;
-        real_lane.x = msg->right_lane_x_real[i];
-        real_lane.y = msg->right_lane_y_real[i];
-        general_instance.right_lane_real.push_back(real_lane);
-        // printf("i %d right real %f %f\n", i, general_instance.right_lane_real[i].x, general_instance.right_lane_real[i].y);
-    }
-    // printf("left %f %f || right %f %f\n", general_instance.left_lane_real[general_instance.left_lane_real.size()].x, general_instance.left_lane_real[general_instance.left_lane_real.size()].y, general_instance.right_lane_real[general_instance.right_lane_real.size()].x, general_instance.right_lane_real[general_instance.right_lane_real.size()].y);
-    for (int i = 0; i < msg->left_lane_x_real.size() && i < msg->right_lane_x_real.size(); i++)
-    {
-        RealLane real_lane;
-        real_lane.x = (general_instance.right_lane_real[i].x + general_instance.left_lane_real[i].x) / 2;
-        real_lane.y = (general_instance.right_lane_real[i].y + general_instance.left_lane_real[i].y) / 2;
-        general_instance.middle_lane_real.push_back(real_lane);
-    }
+    // for (int i = 0; i < msg->right_lane_x_real.size(); i++)
+    // {
+    //     RealLane real_lane;
+    //     real_lane.x = msg->right_lane_x_real[i];
+    //     real_lane.y = msg->right_lane_y_real[i];
+    //     general_instance.right_lane_real.push_back(real_lane);
+    //     // printf("i %d right real %f %f\n", i, general_instance.right_lane_real[i].x, general_instance.right_lane_real[i].y);
+    // }
+    // // printf("left %f %f || right %f %f\n", general_instance.left_lane_real[general_instance.left_lane_real.size()].x, general_instance.left_lane_real[general_instance.left_lane_real.size()].y, general_instance.right_lane_real[general_instance.right_lane_real.size()].x, general_instance.right_lane_real[general_instance.right_lane_real.size()].y);
+    // for (int i = 0; i < msg->left_lane_x_real.size() && i < msg->right_lane_x_real.size(); i++)
+    // {
+    //     RealLane real_lane;
+    //     real_lane.x = (general_instance.right_lane_real[i].x + general_instance.left_lane_real[i].x) / 2;
+    //     real_lane.y = (general_instance.right_lane_real[i].y + general_instance.left_lane_real[i].y) / 2;
+    //     general_instance.middle_lane_real.push_back(real_lane);
+    // }
+    // printf("target x %f y %f\n", msg->target_x,msg->target_y);
+    general_instance.car_target.x = msg->target_x;
+    general_instance.car_target.y = msg->target_y;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)

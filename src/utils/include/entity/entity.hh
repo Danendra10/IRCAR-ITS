@@ -37,6 +37,8 @@ typedef struct CarData_Tag
     float rear_right_wheel_joint;
 
     float distance_between_wheels;
+    float vel_front_left;
+    float vel_front_right;
 } CarData, *CarDataPtr;
 
 struct CameraParameters

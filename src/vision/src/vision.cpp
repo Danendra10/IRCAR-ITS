@@ -31,6 +31,7 @@ int main(int argc, char **argv)
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
     pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
+    pub_target = NH.advertise<msg_collection::RealPosition>("/real_lines", 1);
 
     MTS.spin();
 
@@ -176,7 +177,7 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
 
     // Detect(line_bgr);
-    Detect(raw_frame);  
+    Detect(raw_frame);
 
     waitKey(1);
 }
@@ -575,10 +576,12 @@ void Detect(cv::Mat frame)
     cv::Canny(frame_gray, frame_canny, 25, 50);
     ROI(frame_canny);
     Hough(frame_canny, line_hough);
-    Display(result, line_hough, 0, 255, 0, 0.5);
+    // SlidingWindows(result, line_hough);
+    Display(result, line_hough, 0, 255, 0, 0.2);
     Average(result, line_hough);
-    Display(result, line_hough, 255, 255, 255, 0.5);
+    // Display(result, line_hough, 255, 255, 255, 0.5);
     cv::imshow("edge", frame_canny);
+    // setMouseCallback("result", click_event);
     cv::imshow("result", result);
 }
 
@@ -591,23 +594,31 @@ void ROI(cv::Mat &frame)
     // ROI.push_back(cv::Point(1100, frame.rows));
     // ROI.push_back(cv::Point(555, 290));
     // ROI.push_back(cv::Point(545, 290));
-    // ROI.push_back(cv::Point(0, frame.rows-20));
-    // ROI.push_back(cv::Point(frame.cols/2-100, frame.rows*3/5));
-    // ROI.push_back(cv::Point(frame.cols/2+100, frame.rows*3/5));
-    // ROI.push_back(cv::Point(frame.cols, frame.rows-20));
-    ROI.push_back(cv::Point(0, frame.rows/2+20));
-    ROI.push_back(cv::Point(frame.cols, frame.rows/2+20));
-    ROI.push_back(cv::Point(frame.cols, frame.rows-200));//122
-    ROI.push_back(cv::Point(0, frame.rows-200));
+
+    ROI.push_back(cv::Point(0, frame.rows/2+40));//top left
+    ROI.push_back(cv::Point(frame.cols, frame.rows/2+40));//top right
+    ROI.push_back(cv::Point(frame.cols, frame.rows-122));//bottom right
+    ROI.push_back(cv::Point(0, frame.rows-122));//bottom left
+
+    std::vector<cv::Point> Ignore;
+
+    Ignore.push_back(cv::Point(0, frame.rows-220));
+    Ignore.push_back(cv::Point(frame.cols/2-100, frame.rows/2+70));
+    Ignore.push_back(cv::Point(frame.cols/2+50, frame.rows/2+70));
+    Ignore.push_back(cv::Point(2*frame.cols/3+100, frame.rows-122));
+    Ignore.push_back(cv::Point(0, frame.rows-122));
+
     fillConvexPoly(frame_mask, ROI, cv::Scalar(255));
+    fillConvexPoly(frame_mask, Ignore, cv::Scalar(0));
+    // cv::rectangle(frame_mask, cv::Point(245, 795), cv::Point(555, 636), cv::Scalar(0), CV_FILLED);
     cv::bitwise_and(frame, frame_mask, frame);
 
-    // cv::imshow("mask", frame_mask);
+    cv::imshow("mask", frame_mask);
 }   
 
 void Hough(cv::Mat frame,  std::vector<cv::Vec4i> &line)
 {
-    cv::HoughLinesP(frame, line, 2, CV_PI/180, 100, 70, 5);//100,115,15
+    cv::HoughLinesP(frame, line, 2, CV_PI/180, 94, 36, 14);//100,115,15
 }
 
 void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity)
@@ -630,6 +641,7 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
     std::vector<cv::Vec2f> left_fit;
     std::vector<cv::Vec2f> right_fit;
     int temp = 0;
+    double slope;
 
     // for (size_t i = 0; i < lines.size(); i++)
     // {
@@ -664,18 +676,19 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         double x2 = lines[i][2];
         double y2 = lines[i][3];
 
-        double slope = (y2-y1)/(x2-x1);
+        slope = (y2-y1)/(x2-x1);
         double intercept = y1-(slope*x1);
 
         // Print the coefficients of the fitted polynomial
         // std::cout << "Slope: " << slope << std::endl;
         // std::cout << "Intercept: " << coeffs[1] << std::endl;
 
-        if (slope < 0 && x1 < frame.cols/2.0)
+        // std::cout << x1 << " " << x2 <<std::endl;
+        if (slope < 0 && x1 < 350 && x2 < 350)
         {
             left_fit.push_back(cv::Vec2f(slope, intercept));
         }
-        else if (slope > 0 && x1 > frame.cols/2.0)
+        else if (slope > 0 && x1 > 350 && x2 > 350)
         {
             right_fit.push_back(cv::Vec2f(slope, intercept));
         }
@@ -683,15 +696,16 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
 
     cv::Vec2f left_fit_avg = VectorAvg(left_fit);
     cv::Vec2f right_fit_avg = VectorAvg(right_fit);
+    cv::Vec2f mid_fit_avg;
 
-    std::cout<<"Left : "<<left_fit_avg<<std::endl;
-    std::cout<<"Right : "<<right_fit_avg<<std::endl;
+    // std::cout<<"Left : "<<left_fit_avg<<std::endl;
+    // std::cout<<"Right : "<<right_fit_avg<<std::endl;
 
     std::vector<cv::Vec4i> line_left = MakePoints(frame, left_fit_avg);
     std::vector<cv::Vec4i> line_right = MakePoints(frame, right_fit_avg);
     std::vector<cv::Vec4i> line_mid, line_target;
 
-    std::cout<<line_left[0]<<" "<<line_right[0]<<std::endl;
+    // std::cout<<line_left[0]<<" "<<line_right[0]<<std::endl;
     if(!std::isnan(left_fit_avg[0]) && !std::isnan(right_fit_avg[0]))
     {   
         int x1 = (line_left[0][0] + line_right[0][0])/2.0;
@@ -705,30 +719,71 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         int mid_x2 = (x2 + line_right[0][2])/2.0;
         int mid_y2 = (y2 + line_right[0][3])/2.0;
         line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
+
+        target_x = mid_x2;
+        target_y = mid_y2;
+        
+        cv::circle(frame, cv::Point(target_x, target_y), 5, cv::Scalar(255), 10);
+        // std::cout<<target_x<<"  "<<target_y<<std::endl;
+        msg_collection::RealPosition lane;
+        lane.target_x = 700-target_y;
+        lane.target_y = target_x-400;
+        // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
+        pub_target.publish(lane);
+
     }
     else if(std::isnan(left_fit_avg[0]))
     {
-        ROS_WARN("KIRI HILANG");
+        // ROS_WARN("KIRI HILANG");
         int x1 = line_right[0][0]/2.0;
         int y1 = line_right[0][1];
         int x2 = line_right[0][2]/2.0;
         int y2 = line_right[0][3];
-        std::cout<<x1<<" "<<x2<<std::endl;
-        line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
+        // std::cout<<x1<<" "<<x2<<std::endl;
+        if(right_fit_avg[0]<=1)
+        {
+            mid_fit_avg[0] = sqrt(right_fit_avg[0]);
+            mid_fit_avg[1] = right_fit_avg[1]+80;
+            line_mid = MakePoints(frame, mid_fit_avg);
+        }
+        else
+        {
+            mid_fit_avg[0] = pow(right_fit_avg[0],2);
+            mid_fit_avg[1] = right_fit_avg[1]+80;
+            line_mid = MakePoints(frame, mid_fit_avg);
+        }
+
+        int mid_x1 = (line_mid[0][0] + line_right[0][0])/2.0;
+        int mid_y1 = (line_mid[0][1] + line_right[0][1])/2.0;
+        int mid_x2 = (line_mid[0][2] + line_right[0][2])/2.0;
+        int mid_y2 = (line_mid[0][3] + line_right[0][3])/2.0;
+        line_target.push_back(cv::Vec4i(mid_x1, mid_y1, mid_x2, mid_y2));
+
+        target_x = mid_x2;
+        target_y = mid_y2;
+        
+        cv::circle(frame, cv::Point(target_x, target_y), 5, cv::Scalar(255), 10);
+        // std::cout<<target_x<<"  "<<target_y<<std::endl;
+        msg_collection::RealPosition lane;
+        lane.target_x = 700-target_y;
+        lane.target_y = target_x-400;
+        // printf("nnnn %f %f\n",pixel_to_real(100),pixel_to_real(200));
+        pub_target.publish(lane);
+
     }
     else if(std::isnan(right_fit_avg[0]))
     {
-        ROS_WARN("KANAN HILANG");
+        // ROS_WARN("KANAN HILANG");
         int x1 = line_left[0][0]+(abs(line_left[0][0])/2.0);
         int y1 = line_left[0][1];
         int x2 = line_left[0][2]+(abs(line_left[0][2])/2.0);
         int y2 = line_left[0][3];
-        std::cout<<x1<<" "<<x2<<std::endl;
+        // std::cout<<x1<<" "<<x2<<std::endl;
         line_mid.push_back(cv::Vec4i(x1, y1, x2, y2));
     }
     else
     {
-        ROS_ERROR("WATEFAK");
+        // ROS_ERROR("WATEFAK");
     }
 
     Display(frame, line_left, 255, 0, 0, 1);
@@ -755,10 +810,43 @@ std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI)
 {
     float slope = lineSI[0];
     float intercept = lineSI[1];
-    int y1 = frame.rows;
-    int y2 = (int)(4*y1/7.0);
+    int y1 = frame.rows-150;
+    int y2 = (int)(3*frame.rows/5.0);
     int x1 = (int)((y1 - intercept) / slope);
     int x2 = (int)((y2 - intercept) / slope);
 
     return std::vector<cv::Vec4i>{cv::Vec4i(x1, y1, x2, y2)};
+}
+
+void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
+{   
+    std::vector<cv::Rect> windows;
+    const int numWindows = 20;
+    const int windowWidth = 100;
+    const int windowHeight = 20;
+    int xMid[lines.size()];
+    // int windowStep = (frame.rows/2) / numWindows;
+
+    for(size_t i = 0; i < lines.size(); i++)
+    {
+        cv::Vec4i line = lines[i];
+        xMid[i] = (line[0] + line[3])/2.0;
+        // std::cout<<xMid[i]<<std::endl;
+    }
+
+    for(size_t i = 0; i < numWindows; i++)
+    {
+        int yTop = frame.rows - (i + 1) * windowHeight;
+        int xLeft = xMid[i] - windowWidth/2.0;
+
+        cv::Rect window(xLeft, yTop, windowWidth, windowHeight);
+
+        windows.push_back(window);
+    }
+
+    for (size_t i = 0; i < windows.size(); i++)
+    {   
+        cv::Rect window = windows[i];
+        cv::rectangle(frame, window, cv::Scalar(0, 255, 0), 1);
+    }
 }
