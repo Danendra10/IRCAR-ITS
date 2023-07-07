@@ -11,10 +11,6 @@ add_message_files(
     PointArray.msg
     Obstacles.msg
     RealPosition.msg
-<<<<<<< HEAD
-
-=======
->>>>>>> master
 )
 
 
