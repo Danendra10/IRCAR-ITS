@@ -4,8 +4,8 @@ project(vision)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  sensor_msgs
   std_msgs
+  sensor_msgs
   cv_bridge
   image_transport
   nav_msgs

@@ -8,7 +8,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include "entity/entity.hh"
-#include "logger/logger.hh"
+#include "logger/logger.h"
 
 using namespace cv;
 
@@ -64,20 +64,20 @@ void BuildIPMTable(const int src_w, const int src_h, const int dst_w, const int 
     // float gamma = -(float)(vanishing_pt_x - (src_w >> 1)) * alpha / (src_w >> 1);
     // float theta = -(float)(vanishing_pt_y - (src_h >> 1)) * alpha / (src_h >> 1);
 
-    //frame conversion from source(800x800) to desired frame (800x800) with the calculation of vanishing point(400x400)
+    // frame conversion from source(800x800) to desired frame (800x800) with the calculation of vanishing point(400x400)
     float alpha = 0.686111;
     float gamma = 0;
     float theta = 0.069444;
 
-    int front_map_pose_start = (dst_h >> 1);//shifting binary div by 2
-    int front_map_pose_end = front_map_pose_start + dst_h + 200;//but how ?? i still dont get it
+    int front_map_pose_start = (dst_h >> 1);                     // shifting binary div by 2
+    int front_map_pose_end = front_map_pose_start + dst_h + 200; // but how ?? i still dont get it
 
-    int side_map_mid_pose = dst_w >> 1;//looking for the middle of the road
+    int side_map_mid_pose = dst_w >> 1; // looking for the middle of the road
 
     // int front_map_scale = cam_params.cam_scale_y;
     // int side_map_scale = cam_params.cam_scale_x;
 
-    int front_map_scale = 2;//i'm kinda confused but the bigger the value, road projected more far away
+    int front_map_scale = 2; // i'm kinda confused but the bigger the value, road projected more far away
     int side_map_scale = 0;
 
     for (int y = 0; y < dst_w; ++y)

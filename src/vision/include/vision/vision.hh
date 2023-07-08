@@ -15,6 +15,8 @@
 #include "sensor_msgs/Image.h"
 #include "std_msgs/Float32.h"
 #include "vision/LaneDetect.hh"
+#include "logger/logger.h"
+#include "pinhole/pinhole.hh"
 #include <chrono>
 #include <cv_bridge/cv_bridge.h>
 #include <ros/ros.h>

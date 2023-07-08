@@ -1,40 +1,27 @@
+#include "sign_detector/aruco.hpp"
 
-#include <iostream>
-#include <string>
-#include "opencv2/opencv.hpp"
-#include "opencv2/aruco.hpp"
-#include "ros/ros.h"
-#include "cv_bridge/cv_bridge.h"
-#include "image_transport/image_transport.h"
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "road_sign_detector");
+    ros::NodeHandle nh;
+    ros::MultiThreadedSpinner spinner;
+    image_transport::ImageTransport it(nh);
 
-using namespace std;
-using namespace cv;
+    pub_detected_sign_data = nh.advertise<std_msgs::UInt16>("/vision/sign_detector/detected_sign_data", 1);
 
-const string commands[] = {"dead end", "end tunnel", "forward", "left", "no entry", "right", "start tunnel", "stop"};
+    sub_raw_frame = it.subscribe("/catvehicle/camera_front/image_raw_front", 1, CallbackSubRawFrame);
+    tim_30hz = nh.createTimer(ros::Duration(1.0 / 60.0), CallbackTimer30Hz);
 
-ros::Timer tim_30hz;
-ros::Subscriber sub_raw_frame;
-
-cv::Mat frame_raw;
-cv::Mat frame_gray;
-cv::Mat output_image = frame_raw.clone();
-std::vector<int> marker_ids;
-std::vector<std::vector<cv::Point2f>> marker_corners, rejected_candidates;
-cv::aruco::DetectorParameters detector_params = cv::aruco::DetectorParameters();
-// cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_7X7_250);
-cv::Ptr<cv::aruco::DetectorParameters> detector_params_ptr = cv::makePtr<cv::aruco::DetectorParameters>(detector_params);
-cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_1000);
+    spinner.spin();
+    return 0;
+}
 
 void CallbackSubRawFrame(const sensor_msgs::ImageConstPtr &msg)
 {
     try
     {
         frame_raw = cv_bridge::toCvShare(msg, "bgr8")->image;
-        // cv::cvtColor(frame_raw, frame_gray, cv::COLOR_BGR2GRAY);
-        // cv::aruco::detectMarkers(frame_gray, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
-        // cv::aruco::drawDetectedMarkers(output_image, marker_corners, marker_ids);
-        // cv::imshow("Raw Frame", output_image);
-        // cv::waitKey(1);
+        validator |= 0b001;
     }
     catch (cv_bridge::Exception &e)
     {
@@ -44,13 +31,11 @@ void CallbackSubRawFrame(const sensor_msgs::ImageConstPtr &msg)
 
 void CallbackTimer30Hz(const ros::TimerEvent &event)
 {
-    Mat image = imread("/home/iris/routine/assets/generate_images/1/output_image.jpg");
+    if (validator != 0b001)
+        return;
+    cv::aruco::detectMarkers(frame_raw, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
 
-    // cv::cvtColor(image, frame_gray, cv::COLOR_BGR2GRAY);
-
-    cv::aruco::detectMarkers(image, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
-
-    cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
+    cv::aruco::drawDetectedMarkers(frame_raw, marker_corners, marker_ids);
 
     printf("Detected %lu markers\n", marker_ids.size());
 
@@ -58,23 +43,43 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         int id = marker_ids[i];
         cv::Point2f center = (marker_corners[i][0] + marker_corners[i][1] + marker_corners[i][2] + marker_corners[i][3]) / 4;
-        cv::putText(image, commands[id - 1], center, cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
+        printf("Marker %d at (%f, %f)\n", id, center.x, center.y);
+        cv::putText(frame_raw, commands[id - 1], center, cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
     }
 
-    imshow("Raw Frame", image);
+    // find the closest marker
+    float min_dist = 1000000;
+    int min_index = -1;
+    for (int i = 0; i < marker_ids.size(); ++i)
+    {
+        int id = marker_ids[i];
+        cv::Point2f center = (marker_corners[i][0] + marker_corners[i][1] + marker_corners[i][2] + marker_corners[i][3]) / 4;
+        float dist = sqrt(center.x * center.x + center.y * center.y);
+        if (dist < min_dist)
+        {
+            min_dist = dist;
+            min_index = i;
+        }
+    }
+
+    if (min_index != -1)
+    {
+        int id = marker_ids[min_index];
+        cv::Point2f center = (marker_corners[min_index][0] + marker_corners[min_index][1] + marker_corners[min_index][2] + marker_corners[min_index][3]) / 4;
+        cv::putText(frame_raw, commands[id - 1], center, cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
+        std_msgs::UInt16 msg;
+        msg.data = id;
+        printf("Published Data: %d\n", id);
+        pub_detected_sign_data.publish(msg);
+    }
+    else
+    {
+        std_msgs::UInt16 msg;
+        msg.data = 8;
+        printf("Published Data: 8\n");
+        pub_detected_sign_data.publish(msg);
+    }
+
+    imshow("Raw Frame", frame_raw);
     waitKey(1);
-}
-
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "road_sign_detector");
-    ros::NodeHandle nh;
-    ros::MultiThreadedSpinner spinner(4);
-    image_transport::ImageTransport it(nh);
-
-    // ros::Subscriber sub_raw_frame = nh.subscribe("/camera/image_raw", 1, SubRawFrameCllbck);
-    tim_30hz = nh.createTimer(ros::Duration(1.0 / 30.0), CallbackTimer30Hz);
-
-    spinner.spin();
-    return 0;
 }

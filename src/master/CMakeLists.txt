@@ -28,4 +28,4 @@ include_directories(
 )
 
 add_executable(master src/master.cc)
-target_link_libraries(master ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib motion_lib)
+target_link_libraries(master ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}  entity_lib motion_lib logger_lib math_lib)

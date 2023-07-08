@@ -1,5 +1,5 @@
-#ifndef __LOGGER_HH_
-#define __LOGGER_HH_
+#ifndef __LOGGER_H_
+#define __LOGGER_H_
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -21,9 +21,9 @@
 #define MAGENTA "\033[0;35m"
 #define CYAN "\033[0;36m"
 #define WHITE "\033[0;37m"
-#define RESET "\033[0m"
+#define RST "\033[0m"
 
-#define LOGDIR "/home/isabellej/update_fira/Log/log.txt"
+#define LOGDIR "~/catkin_ws/Log/log.txt"
 
 void Logger(const char *color, const char *msg, ...);
 void SaveLog(const char *msg, ...);

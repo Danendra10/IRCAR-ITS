@@ -12,6 +12,7 @@ int main(int argc, char **argv)
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
     general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
+    general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
 
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
@@ -25,7 +26,8 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    // DecideCarTarget(&general_instance);
+    AutoDrive(&general_instance);
+    DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -101,6 +103,197 @@ void SimulatorState()
         MoveRobot(0, 0);
         break;
     }
+}
+
+void AutoDrive(general_data_ptr data)
+{
+    try
+    {
+        if (data_validator < 0b001)
+        {
+            Logger(RED, "Data hasn't been validated yet");
+            return;
+        }
+        if (data->sign_type == NO_SIGN)
+        {
+            data->main_state.value = AUTONOMOUS_NO_SIGN;
+        }
+        else
+        {
+            if (data->sign_type == SIGN_STOP)
+                data->main_state.value = AUTONOMOUS_STOP_SIGN;
+            if (data->sign_type == SIGN_LEFT)
+                data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
+            if (data->sign_type == SIGN_RIGHT)
+                data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+            if (data->sign_type == SIGN_FORWARD)
+                data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
+            if (data->sign_type == SIGN_DEAD_END)
+                data->main_state.value = AUTONOMOUS_DEAD_END;
+            if (data->sign_type == SIGN_NO_ENTRY)
+                data->main_state.value = AUTONOMOUS_NO_ENTRY;
+            if (data->sign_type == SIGN_START_TUNNEL)
+                data->main_state.value = AUTONOMOUS_START_TUNNEL;
+            if (data->sign_type == SIGN_END_TUNNEL)
+                data->main_state.value = AUTONOMOUS_END_TUNNEL;
+        }
+
+        Logger(BLUE, "AutoDrive: %d", data->main_state.value);
+
+        switch (data->main_state.value)
+        {
+        case AUTONOMOUS_NO_SIGN:
+            RobotMovement(data);
+            break;
+        case AUTONOMOUS_STOP_SIGN:
+            StopRobot(data);
+            break;
+        case AUTONOMOUS_TURN_LEFT_90:
+            TurnCarLeft90Degree(data);
+            break;
+        case AUTONOMOUS_TURN_RIGHT_90:
+            TurnCarRight90Degree(data);
+            break;
+        case AUTONOMOUS_KEEP_FORWARD:
+            KeepForward(data);
+            break;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+}
+
+void StopRobot(general_data_ptr data)
+{
+    data->car_vel.x = 0;
+    data->car_vel.th = 0;
+}
+
+/**
+ * TODO: Check the sign distance, if it's too far, don't turn @danendra10
+ */
+void TurnCarLeft90Degree(general_data_ptr general_data)
+{
+    // Stop the car
+    general_data->car_vel.x = 0;
+    general_data->car_vel.th = 0;
+
+    /**
+     * Wait for a certain period of time to ensure the car has stopped,
+     * don't make it turn while it's still moving, it will mess up the turn
+     */
+    ros::Duration(0.5).sleep();
+
+    /**
+     * Turn the car left by 90 degrees
+     * The desired heading is the current heading + 90 degrees
+     */
+    float desired_heading = general_data->car_pose.th + (M_PI / 2.0); // Add 90 degrees (pi/2) to the current heading
+
+    if (desired_heading > M_PI)
+        desired_heading -= (2 * M_PI);
+    else if (desired_heading < -M_PI)
+        desired_heading += (2 * M_PI);
+
+    general_data->car_target.x = general_data->car_pose.x;
+    general_data->car_target.y = general_data->car_pose.y;
+    general_data->car_target.th = desired_heading;
+
+    RobotMovement(general_data);
+}
+
+void TurnCarRight90Degree(general_data_ptr general_data)
+{
+    // Stop the car
+    general_data->car_vel.x = 0;
+    general_data->car_vel.th = 0;
+
+    /**
+     * Wait for a certain period of time to ensure the car has stopped,
+     * don't make it turn while it's still moving, it will mess up the turn
+     */
+    ros::Duration(0.5).sleep();
+
+    /**
+     * Turn the car right by 90 degrees
+     * The desired heading is the current heading - 90 degrees
+     */
+    float desired_heading = general_data->car_pose.th - (M_PI / 2.0); // Subtract 90 degrees (pi/2) from the current heading
+
+    if (desired_heading > M_PI)
+        desired_heading -= (2 * M_PI);
+    else if (desired_heading < -M_PI)
+        desired_heading += (2 * M_PI);
+
+    general_data->car_target.x = general_data->car_pose.x;
+    general_data->car_target.y = general_data->car_pose.y;
+    general_data->car_target.th = desired_heading;
+
+    RobotMovement(general_data);
+}
+
+void KeepForward(general_data_ptr general_data)
+{
+    // Stop the car
+    general_data->car_vel.x = 0;
+    general_data->car_vel.th = 0;
+
+    /**
+     * Wait for a certain period of time to ensure the car has stopped,
+     * don't make it turn while it's still moving, it will mess up the turn
+     */
+    ros::Duration(0.5).sleep();
+
+    /**
+     * Check if the robot's angle is linear with the angle of the lane first
+     * If it is linear, keep moving forward
+     * If it is not linear, adjust the target to align with the lane's angle
+     */
+    int middle_lane_size = general_data->middle_lane.size();
+    int left_lane_size = general_data->left_lane.size();
+    int right_lane_size = general_data->right_lane.size();
+    int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
+
+    int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
+
+    if (size_of_middle_lane_close_to_robot == -1)
+    {
+        // keep forward
+        general_data->car_target.x = general_data->car_pose.x + 0.5;
+        general_data->car_target.y = general_data->car_pose.y;
+        general_data->car_target.th = general_data->car_pose.th;
+    }
+
+    // Check if the robot's angle is linear with the angle of the lane
+    if (middle_lane_size > 400 && abs(dist_between_points) < 20)
+    {
+        // The robot's angle is linear with the angle of the lane, keep moving forward
+        general_data->car_target.x = general_data->car_pose.x;
+        general_data->car_target.y = general_data->car_pose.y;
+        general_data->car_target.th = general_data->car_pose.th;
+    }
+    else
+    {
+        // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
+        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
+        {
+            general_data->car_target.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
+            general_data->car_target.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
+            general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
+        }
+        else
+        {
+            // The robot's angle is not linear and no specific side is determined, keep moving forward
+            general_data->car_target.x = general_data->car_pose.x;
+            general_data->car_target.y = general_data->car_pose.y;
+            general_data->car_target.th = general_data->car_pose.th;
+        }
+    }
+
+    // Call the RobotMovement function with the updated target to keep the car moving forward
+    RobotMovement(general_data);
 }
 
 void DecideCarTarget(general_data_ptr general_data)
