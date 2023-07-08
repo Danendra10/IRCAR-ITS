@@ -207,7 +207,10 @@ void RobotMovement(general_data_ptr data);
 void DecideCarTarget(general_data_ptr data);
 void AutoDrive(general_data_ptr data);
 void MoveWithObs(general_data_ptr data_in_obs);
-
+void TurnCarLeft90Degree(general_data_ptr general_data);
+void TurnCarRight90Degree(general_data_ptr general_data);
+void KeepForward(general_data_ptr general_data);
+void StopRobot(general_data_ptr data);
 int8_t kbhit()
 {
     static const int STDIN = 0;

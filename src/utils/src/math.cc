@@ -21,7 +21,7 @@ unsigned int DivideBy4(unsigned int in)
     return in >> 2;
 }
 
-float pixel_to_real(float pix)
+float PixelToReal(float pix)
 {
     int max_orde = 5;
     double orde[] = {1.6025170549750258e+000, -8.0261626712776948e-003, 1.9085792942752757e-004, -5.1360872046995370e-007, 6.6860526863516786e-010, -2.8823572300900999e-013};
@@ -97,4 +97,17 @@ void PolynomialRegression::print()
 vector<double> PolynomialRegression::getW()
 {
     return w;
+}
+
+int SizeOfLane(vector<Lane> lanes, int start_idx, int end_idx)
+{
+    int size = 0;
+    for (int i = start_idx; i < end_idx; i++)
+    {
+        if (lanes[i].x != NULL && lanes[i].y != NULL)
+            size++;
+    }
+    if (!size)
+        return -1;
+    return size;
 }
