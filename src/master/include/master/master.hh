@@ -27,7 +27,8 @@ typedef struct general_data_tag
 {
     Velocity car_vel;
     CarPose car_pose;
-    Target car_target;
+    Target car_target_left;
+    Target car_target_right;
     CarData car_data;
 
     vector<Obstacles> raw_obs_data;
@@ -49,6 +50,7 @@ typedef struct general_data_tag
     vector<RealLane> left_lane_real;
     vector<RealLane> middle_lane_real;
     vector<RealLane> right_lane_real;
+    vector<RealLane> path_lane;
 
     MachineState main_state;
 
@@ -91,7 +93,9 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
-        // printf("lidar || x %.2f y %.2f\n", raw_obs.x, raw_obs.y);
+        float dst = sqrt(pow(raw_obs.x,2)+pow(raw_obs.y,2));
+        // if (i % 5 == 0)
+        //     printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y, dst);
 
         Obstacles obs;
         obs.x = msg->x[i] + general_instance.car_pose.x;
@@ -114,6 +118,8 @@ void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data
     general_instance->car_data.rear_right_wheel_joint = msg->position[1];
     general_instance->car_data.front_right_wheel_joint = msg->position[4];
     general_instance->car_data.front_left_wheel_joint = msg->position[5];
+    general_instance->car_data.vel_front_left = msg->velocity[2];
+    general_instance->car_data.vel_front_right = msg->velocity[3];
 
     // general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
 }
@@ -157,16 +163,18 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     //     general_instance.middle_lane_real.push_back(real_lane);
     // }
     // printf("target x %f y %f\n", msg->target_x,msg->target_y);
-    general_instance.car_target.x = msg->target_x;
-    general_instance.car_target.y = msg->target_y;
+    general_instance.car_target_left.x = msg->target_x_left;
+    general_instance.car_target_left.y = msg->target_y_left;
+    general_instance.car_target_right.x = msg->target_x_right;
+    general_instance.car_target_right.y = msg->target_y_right;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 {
-    int buffer_lane_x, buffer_lane_y;
     general_instance.left_lane.clear();
     general_instance.middle_lane.clear();
     general_instance.right_lane.clear();
+    general_instance.path_lane.clear();
 
     for (int i = 0; i < msg->left_lane_x.size(); i++)
     {
@@ -187,13 +195,19 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
     for (int i = 0; i < msg->right_lane_x.size(); i++)
     {
         Lane lane;
-
         lane.x = msg->right_lane_x[i];
         lane.y = msg->right_lane_y[i];
-
         general_instance.right_lane.push_back(lane);
     }
 
+    for (int i = 0; i < msg->path_lane_x.size(); i++)
+    {
+        Lane real_lane;
+        real_lane.x = pixel_to_real(700 - msg->path_lane_y[i]);
+        real_lane.y = pixel_to_real(msg->path_lane_x[i] - 400);
+        general_instance.path_lane.push_back(real_lane);
+        // printf("x %f y %f\n", general_instance.path_lane[i].x, general_instance.path_lane[i].y);
+    }
     data_validator |= 0b001;
 }
 

@@ -1,22 +1,23 @@
 #ifndef _VISION_HH
 #define _VISION_HH
 
-#include "sensor_msgs/Image.h"
-#include <cv_bridge/cv_bridge.h>
-#include <ros/ros.h>
-#include "image_transport/image_transport.h"
-#include <chrono>
-#include "nav_msgs/Odometry.h"
 #include "entity/entity.hh"
 #include "geometry_msgs/Point.h"
-#include "msg_collection/PointArray.h"
-#include "msg_collection/Obstacles.h"
-#include "msg_collection/RealPosition.h"
+#include "image_transport/image_transport.h"
 #include "imp/imph.hh"
 #include "math/math.hh"
+#include "msg_collection/Obstacles.h"
+#include "msg_collection/PointArray.h"
+#include "msg_collection/RealPosition.h"
+#include "nav_msgs/Odometry.h"
+#include "sensor_msgs/Image.h"
+#include "std_msgs/Float32.h"
 #include "vision/LaneDetect.hh"
 #include "logger/logger.h"
 #include "pinhole/pinhole.hh"
+#include <chrono>
+#include <cv_bridge/cv_bridge.h>
+#include <ros/ros.h>
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)
@@ -42,6 +43,7 @@ ros::Subscriber sub_lidar_data;
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
 ros::Publisher pub_target;
+ros::Publisher pub_slope;
 
 ros::Timer tim_30hz;
 
@@ -71,21 +73,29 @@ Mat resized;
 Mat grayresized;
 // Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
 
-int x_target;
-int y_target;
+int x_target_left, x_target_right;
+int y_target_left, y_target_right;
+#define LeftLane true
+#define RightLane false
+bool decision = LeftLane;
+#define Normal 0
+#define LeftLost 1
+#define RightLost 2
+int8_t prev_state;
+bool isWait = false;
 
 PolynomialRegression polynom(DEGREE);
 
 //============================================================
 
-void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
-void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
+void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr& msg);
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr& msg);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr& msg);
 
 //============================================================
 
-void Tim30HzCllbck(const ros::TimerEvent &event);
-void click_event(int event, int x, int y, int flags, void *params);
+void Tim30HzCllbck(const ros::TimerEvent& event);
+void click_event(int event, int x, int y, int flags, void* params);
 
 //============================================================
 
@@ -93,25 +103,25 @@ void Init();
 void record();
 Mat ToWrappedFrame(Mat raw_frame);
 vector<Point> GetPoints(Mat wrapped_frame);
-std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point> &points);
-std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddleOfLeftRoad(const std::vector<cv::Point> &leftPoints, const std::vector<cv::Point> &middlePoints);
-std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point> &rightPoints, const std::vector<cv::Point> &middlePoints);
+std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point>& points);
+std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point>& points, int frameWidth);
+std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point>& points, int frameWidth);
+std::vector<cv::Point> GetMiddleOfLeftRoad(const std::vector<cv::Point>& leftPoints, const std::vector<cv::Point>& middlePoints);
+std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point>& rightPoints, const std::vector<cv::Point>& middlePoints);
 
-Mat DrawObsPoints(const vector<ObstaclesPtr> &points);
+Mat DrawObsPoints(const vector<ObstaclesPtr>& points);
 
-std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i> &lines);
-std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, const std::vector<cv::Vec4i> &middleLines);
-cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
+std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i>& lines);
+std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i>& lines, int frameWidth);
+std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i>& lines, int frameWidth);
+std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i>& leftLines, const std::vector<cv::Vec4i>& middleLines);
+cv::Vec4i ExtrapolateLine(const cv::Vec4i& line, int minY, int maxY);
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat &frame);
-void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line);
-void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
-void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
+void ROI(cv::Mat& frame, bool road_part);
+void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line);
+void Display(cv::Mat& frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines);
 cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
 std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
 void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines);
