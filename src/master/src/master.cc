@@ -12,6 +12,7 @@ int main(int argc, char **argv)
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
     general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
+    general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
 
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 

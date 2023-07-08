@@ -10,6 +10,7 @@
 #include "msg_collection/RealPosition.h"
 #include "sensor_msgs/JointState.h"
 #include "math/math.hh"
+#include "std_msgs/UInt16.h"
 
 #include <vector>
 
@@ -35,6 +36,7 @@ typedef struct general_data_tag
     ros::Subscriber sub_car_pose;
     ros::Subscriber sub_lines;
     ros::Subscriber sub_real_lines;
+    ros::Subscriber sub_road_sign;
     ros::Subscriber sub_car_data;
     ros::Subscriber sub_lidar_data;
     ros::Timer tim_60_hz;
@@ -52,6 +54,7 @@ typedef struct general_data_tag
     uint8_t obs_status;
     uint8_t car_side;
     uint8_t moved_state;
+    uint16_t sign_type;
 
 } general_data_t, *general_data_ptr;
 
@@ -187,6 +190,11 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 
     data_validator |= 0b001;
     // printf("data validnya %d\n", data_validator);
+}
+
+void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
+{
+    general_instance.sign_type = msg->data;
 }
 
 //==============================================================================
