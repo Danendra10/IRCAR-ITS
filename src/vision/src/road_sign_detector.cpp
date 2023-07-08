@@ -68,6 +68,12 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         msg.data = id;
         pub_detected_sign_data.publish(msg);
     }
+    else
+    {
+        std_msgs::UInt16 msg;
+        msg.data = 8;
+        pub_detected_sign_data.publish(msg);
+    }
 
     imshow("Raw Frame", image);
     waitKey(1);

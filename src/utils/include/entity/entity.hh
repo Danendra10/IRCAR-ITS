@@ -9,6 +9,7 @@
 #define SIGN_RIGHT 5
 #define SIGN_START_TUNNEL 6
 #define SIGN_STOP 7
+#define NO_SIGN 8
 
 typedef struct Pose3D_Tag
 {

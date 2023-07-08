@@ -1,4 +1,5 @@
-
+#ifndef __ARUCO_HH_
+#define __ARUCO_HH_
 #include <iostream>
 #include <string>
 #include "opencv2/opencv.hpp"
@@ -6,7 +7,7 @@
 #include "ros/ros.h"
 #include "cv_bridge/cv_bridge.h"
 #include "image_transport/image_transport.h"
-#include "std_msgs/UInt16"
+#include "std_msgs/UInt16.h"
 
 using namespace std;
 using namespace cv;
@@ -29,3 +30,4 @@ cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(c
 
 void CallbackSubRawFrame(const sensor_msgs::ImageConstPtr &msg);
 void CallbackTimer30Hz(const ros::TimerEvent &event);
+#endif
