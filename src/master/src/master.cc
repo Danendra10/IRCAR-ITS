@@ -197,9 +197,9 @@ void TurnCarLeft90Degree(general_data_ptr general_data)
     else if (desired_heading < -M_PI)
         desired_heading += (2 * M_PI);
 
-    general_data->car_target.x = general_data->car_pose.x;
-    general_data->car_target.y = general_data->car_pose.y;
-    general_data->car_target.th = desired_heading;
+    general_data->car_target_left.x = general_data->car_pose.x;
+    general_data->car_target_left.y = general_data->car_pose.y;
+    general_data->car_target_left.th = desired_heading;
 
     RobotMovement(general_data);
 }
@@ -227,9 +227,9 @@ void TurnCarRight90Degree(general_data_ptr general_data)
     else if (desired_heading < -M_PI)
         desired_heading += (2 * M_PI);
 
-    general_data->car_target.x = general_data->car_pose.x;
-    general_data->car_target.y = general_data->car_pose.y;
-    general_data->car_target.th = desired_heading;
+    general_data->car_target_left.x = general_data->car_pose.x;
+    general_data->car_target_left.y = general_data->car_pose.y;
+    general_data->car_target_left.th = desired_heading;
 
     RobotMovement(general_data);
 }
@@ -261,34 +261,34 @@ void KeepForward(general_data_ptr general_data)
     if (size_of_middle_lane_close_to_robot == -1)
     {
         // keep forward
-        general_data->car_target.x = general_data->car_pose.x + 0.5;
-        general_data->car_target.y = general_data->car_pose.y;
-        general_data->car_target.th = general_data->car_pose.th;
+        general_data->car_target_left.x = general_data->car_pose.x + 0.5;
+        general_data->car_target_left.y = general_data->car_pose.y;
+        general_data->car_target_left.th = general_data->car_pose.th;
     }
 
     // Check if the robot's angle is linear with the angle of the lane
     if (middle_lane_size > 400 && abs(dist_between_points) < 20)
     {
         // The robot's angle is linear with the angle of the lane, keep moving forward
-        general_data->car_target.x = general_data->car_pose.x;
-        general_data->car_target.y = general_data->car_pose.y;
-        general_data->car_target.th = general_data->car_pose.th;
+        general_data->car_target_left.x = general_data->car_pose.x;
+        general_data->car_target_left.y = general_data->car_pose.y;
+        general_data->car_target_left.th = general_data->car_pose.th;
     }
     else
     {
         // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
         if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
         {
-            general_data->car_target.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
-            general_data->car_target.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
-            general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
+            general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
+            general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
+            general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
         }
         else
         {
             // The robot's angle is not linear and no specific side is determined, keep moving forward
-            general_data->car_target.x = general_data->car_pose.x;
-            general_data->car_target.y = general_data->car_pose.y;
-            general_data->car_target.th = general_data->car_pose.th;
+            general_data->car_target_left.x = general_data->car_pose.x;
+            general_data->car_target_left.y = general_data->car_pose.y;
+            general_data->car_target_left.th = general_data->car_pose.th;
         }
     }
 
