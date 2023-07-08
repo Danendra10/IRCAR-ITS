@@ -1,5 +1,5 @@
-#ifndef __VISION_HH_
-#define __VISION_HH_
+#ifndef _VISION_HH
+#define _VISION_HH
 
 #include "sensor_msgs/Image.h"
 #include <cv_bridge/cv_bridge.h>
@@ -15,7 +15,7 @@
 #include "imp/imph.hh"
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
-#include "logger/logger.h"
+#include "logger/logger.hh"
 #include "pinhole/pinhole.hh"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
@@ -41,7 +41,7 @@ ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
 ros::Publisher pub_points;
-ros::Publisher pub_lane;
+ros::Publisher pub_target;
 
 ros::Timer tim_30hz;
 
@@ -70,6 +70,9 @@ Mat wrapped_frame;
 Mat resized;
 Mat grayresized;
 // Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
+
+int x_target;
+int y_target;
 
 PolynomialRegression polynom(DEGREE);
 
@@ -103,6 +106,15 @@ std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int fr
 std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
 std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, const std::vector<cv::Vec4i> &middleLines);
 cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
+
+void Detect(cv::Mat frame);
+void ROI(cv::Mat &frame);
+void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line);
+void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
+cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
+std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
+void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines);
 
 //============================================================
 
