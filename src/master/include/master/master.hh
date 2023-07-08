@@ -19,6 +19,7 @@
 
 #include "master/MachineState.hh"
 #include "motion/motion.hh"
+#include "logger/logger.h"
 
 using namespace std;
 
@@ -189,7 +190,6 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
     }
 
     data_validator |= 0b001;
-    // printf("data validnya %d\n", data_validator);
 }
 
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)

@@ -26,7 +26,7 @@ add_library(math_lib
 target_link_libraries(math_lib ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(logger_lib
-  src/logger.cc
+  src/logger.cpp
 )
 target_link_libraries(logger_lib ${catkin_LIBRARIES})
 

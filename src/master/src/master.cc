@@ -105,6 +105,52 @@ void SimulatorState()
     }
 }
 
+void AutoDrive(general_data_ptr data)
+{
+    try
+    {
+        if (data_validator < 0b001)
+        {
+            Logger(RED, "Data hasn't been validated yet");
+            return;
+        }
+        if (data->sign_type == NO_SIGN)
+        {
+            data->main_state.value = AUTONOMOUS_NO_SIGN;
+        }
+        else
+        {
+            if (data->sign_type == SIGN_STOP)
+                data->main_state.value = AUTONOMOUS_STOP_SIGN;
+            if (data->sign_type == SIGN_LEFT)
+                data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
+            if (data->sign_type == SIGN_RIGHT)
+                data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+            if (data->sign_type == SIGN_FORWARD)
+                data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
+            if (data->sign_type == SIGN_DEAD_END)
+                data->main_state.value = AUTONOMOUS_DEAD_END;
+            if (data->sign_type == SIGN_NO_ENTRY)
+                data->main_state.value = AUTONOMOUS_NO_ENTRY;
+            if (data->sign_type == SIGN_START_TUNNEL)
+                data->main_state.value = AUTONOMOUS_START_TUNNEL;
+            if (data->sign_type == SIGN_END_TUNNEL)
+                data->main_state.value = AUTONOMOUS_END_TUNNEL;
+        }
+
+        switch (data->main_state.value)
+        {
+        case AUTONOMOUS_NO_SIGN:
+            DecideCarTarget(data);
+            break;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+}
+
 void DecideCarTarget(general_data_ptr general_data)
 {
     try
