@@ -138,6 +138,8 @@ void AutoDrive(general_data_ptr data)
                 data->main_state.value = AUTONOMOUS_END_TUNNEL;
         }
 
+        Logger(BLUE, "AutoDrive: %d", data->main_state.value);
+
         switch (data->main_state.value)
         {
         case AUTONOMOUS_NO_SIGN:
@@ -169,6 +171,9 @@ void StopRobot(general_data_ptr data)
     data->car_vel.th = 0;
 }
 
+/**
+ * TODO: Check the sign distance, if it's too far, don't turn @danendra10
+ */
 void TurnCarLeft90Degree(general_data_ptr general_data)
 {
     // Stop the car
@@ -348,7 +353,7 @@ void DecideCarTarget(general_data_ptr general_data)
         }
         general_data->car_target.th = atan2(general_data->car_target.y - general_data->car_pose.y, general_data->car_target.x - general_data->car_pose.x);
 
-        ROS_INFO("target %f %f %f\n", general_data->car_target.x, general_data->car_target.y, general_data->car_target.th);
+        // ROS_INFO("target %f %f %f\n", general_data->car_target.x, general_data->car_target.y, general_data->car_target.th);
 
         if (general_data->middle_lane.size() < 0)
             return;

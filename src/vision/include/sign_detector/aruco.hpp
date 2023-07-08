@@ -12,10 +12,12 @@
 using namespace std;
 using namespace cv;
 
+int validator;
+
 const string commands[] = {"dead end", "end tunnel", "forward", "left", "no entry", "right", "start tunnel", "stop"};
 
 ros::Timer tim_30hz;
-ros::Subscriber sub_raw_frame;
+image_transport::Subscriber sub_raw_frame;
 ros::Publisher pub_detected_sign_data;
 
 cv::Mat frame_raw;

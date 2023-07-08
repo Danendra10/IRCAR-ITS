@@ -195,7 +195,7 @@ void record()
 
     VideoWriter video;
 
-    video.open("/home/isabellej/Desktop/test.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
+    video.open("~/test.mp4", VideoWriter::fourcc('m', 'p', '4', 'v'), 10, Size(frame_width, frame_height));
     for (int i = 0; i < 999; i++)
     {
         video.write(raw_frame);
