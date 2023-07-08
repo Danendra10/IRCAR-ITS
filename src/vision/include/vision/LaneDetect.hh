@@ -138,8 +138,8 @@ public:
         // find all contours in the binary image
         temp.copyTo(binary_image);
         findContours(binary_image, contours,
-                     hierarchy, CV_RETR_CCOMP,
-                     CV_CHAIN_APPROX_SIMPLE);
+                     hierarchy, RETR_CCOMP,
+                     CHAIN_APPROX_SIMPLE);
 
         // for removing invalid blobs
         if (!contours.empty())

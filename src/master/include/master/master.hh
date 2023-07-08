@@ -25,7 +25,8 @@ typedef struct general_data_tag
 {
     Velocity car_vel;
     CarPose car_pose;
-    Target car_target;
+    Target car_target_left;
+    Target car_target_right;
     CarData car_data;
 
     vector<Obstacles> raw_obs_data;
@@ -158,8 +159,10 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     //     general_instance.middle_lane_real.push_back(real_lane);
     // }
     // printf("target x %f y %f\n", msg->target_x,msg->target_y);
-    general_instance.car_target.x = msg->target_x;
-    general_instance.car_target.y = msg->target_y;
+    general_instance.car_target_left.x = msg->target_x_left;
+    general_instance.car_target_left.y = msg->target_y_left;
+    general_instance.car_target_right.x = msg->target_x_right;
+    general_instance.car_target_right.y = msg->target_y_right;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)

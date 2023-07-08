@@ -7,5 +7,7 @@ float32[] right_lane_y_real
 # float32[] middle_lane_x_real
 # float32[] middle_lane_y_real
 
-float32 target_x
-float32 target_y
+float32 target_x_left
+float32 target_y_left
+float32 target_x_right
+float32 target_y_right
