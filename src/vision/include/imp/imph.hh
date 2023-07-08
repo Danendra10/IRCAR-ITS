@@ -8,7 +8,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <math.h>
 #include "entity/entity.hh"
-#include "logger/logger.hh"
+#include "logger/logger.h"
 
 using namespace cv;
 

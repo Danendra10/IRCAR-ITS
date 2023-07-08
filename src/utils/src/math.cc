@@ -103,3 +103,16 @@ vector<double> PolynomialRegression::getW()
 {
     return w;
 }
+
+int SizeOfLane(vector<Lane> lanes, int start_idx, int end_idx)
+{
+    int size = 0;
+    for (int i = start_idx; i < end_idx; i++)
+    {
+        if (lanes[i].x != NULL && lanes[i].y != NULL)
+            size++;
+    }
+    if (!size)
+        return -1;
+    return size;
+}

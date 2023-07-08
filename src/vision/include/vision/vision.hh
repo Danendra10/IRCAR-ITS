@@ -15,7 +15,7 @@
 #include "imp/imph.hh"
 #include "math/math.hh"
 #include "vision/LaneDetect.hh"
-#include "logger/logger.hh"
+#include "logger/logger.h"
 #include "pinhole/pinhole.hh"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
