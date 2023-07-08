@@ -211,6 +211,7 @@ void MoveRobot(float vx_, float vz_);
 void TransmitData(general_data_ptr data);
 void RobotMovement(general_data_ptr data);
 void DecideCarTarget(general_data_ptr data);
+void AutoDrive(general_data_ptr data);
 void TurnCarLeft90Degree(general_data_ptr general_data);
 void TurnCarRight90Degree(general_data_ptr general_data);
 void KeepForward(general_data_ptr general_data);
