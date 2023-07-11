@@ -1,14 +1,14 @@
 #ifndef __ENTITY_HH_
 #define __ENTITY_HH_
 
-#define SIGN_DEAD_END 0
-#define SIGN_END_TUNNEL 1
-#define SIGN_FORWARD 2
-#define SIGN_LEFT 3
-#define SIGN_NO_ENTRY 4
-#define SIGN_RIGHT 5
-#define SIGN_START_TUNNEL 6
-#define SIGN_STOP 7
+#define SIGN_STOP 0
+#define SIGN_RIGHT 1
+#define SIGN_LEFT 2
+#define SIGN_FORWARD 3
+// #define SIGN_DEAD_END 0
+// #define SIGN_END_TUNNEL 1
+// #define SIGN_NO_ENTRY 4
+// #define SIGN_START_TUNNEL 6
 #define NO_SIGN 8
 
 typedef struct Pose3D_Tag

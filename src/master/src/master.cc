@@ -1,5 +1,7 @@
 #include "master/master.hh"
 
+#define DRIVE
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "master");
@@ -10,13 +12,16 @@ int main(int argc, char **argv)
 
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
+    /**
+     * TODO: No data being published @hernanda16
+     */
     general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
-
+    general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 40), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -26,8 +31,8 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    // AutoDrive(&general_instance);
-    // DecideCarTarget(&general_instance);
+    AutoDrive(&general_instance);
+    DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -109,9 +114,10 @@ void AutoDrive(general_data_ptr data)
 {
     try
     {
-        if (data_validator < 0b001)
+        printf("data validator: %d\n", data_validator);
+        if (data_validator < 0b111)
         {
-            // Logger(RED, "Data hasn't been validated yet");
+
             return;
         }
         if (data->sign_type == NO_SIGN)
@@ -128,18 +134,19 @@ void AutoDrive(general_data_ptr data)
                 data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
             if (data->sign_type == SIGN_FORWARD)
                 data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
-            if (data->sign_type == SIGN_DEAD_END)
-                data->main_state.value = AUTONOMOUS_DEAD_END;
-            if (data->sign_type == SIGN_NO_ENTRY)
-                data->main_state.value = AUTONOMOUS_NO_ENTRY;
-            if (data->sign_type == SIGN_START_TUNNEL)
-                data->main_state.value = AUTONOMOUS_START_TUNNEL;
-            if (data->sign_type == SIGN_END_TUNNEL)
-                data->main_state.value = AUTONOMOUS_END_TUNNEL;
+            // if (data->sign_type == SIGN_DEAD_END)
+            //     data->main_state.value = AUTONOMOUS_DEAD_END;
+            // if (data->sign_type == SIGN_NO_ENTRY)
+            //     data->main_state.value = AUTONOMOUS_NO_ENTRY;
+            // if (data->sign_type == SIGN_START_TUNNEL)
+            //     data->main_state.value = AUTONOMOUS_START_TUNNEL;
+            // if (data->sign_type == SIGN_END_TUNNEL)
+            //     data->main_state.value = AUTONOMOUS_END_TUNNEL;
         }
 
         Logger(BLUE, "AutoDrive: %d", data->main_state.value);
 
+#ifdef DRIVE
         switch (data->main_state.value)
         {
         case AUTONOMOUS_NO_SIGN:
@@ -157,7 +164,11 @@ void AutoDrive(general_data_ptr data)
         case AUTONOMOUS_KEEP_FORWARD:
             KeepForward(data);
             break;
+        default:
+            RobotMovement(data);
+            break;
         }
+#endif
     }
     catch (const std::exception &e)
     {
@@ -300,7 +311,7 @@ void DecideCarTarget(general_data_ptr general_data)
 {
     try
     {
-        if (data_validator < 0b001)
+        if (data_validator < 0b111)
             return;
         int lane_buffer_x, lane_buffer_y;
         int middle_lane_size = general_data->middle_lane.size();
@@ -367,9 +378,9 @@ void DecideCarTarget(general_data_ptr general_data)
         if (general_data->middle_lane[middle_lane_size - 1].x == 0)
             return;
     }
-    catch (...)
+    catch (std::exception &e)
     {
-        printf("error\n");
+        std::cout << "Error cought on Line: " << __LINE__ << std::endl;
     }
 }
 
@@ -427,5 +438,10 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
+    if (general_instance.signal_stop)
+    {
+        vel_msg.angular.z = 0;
+        vel_msg.linear.x = 0;
+    }
     data->pub_car_vel.publish(vel_msg);
 }

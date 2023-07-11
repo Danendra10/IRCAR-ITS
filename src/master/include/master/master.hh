@@ -2,24 +2,26 @@
 #define __MASTER_HH_
 
 #include "ros/ros.h"
+
+#include "sensor_msgs/JointState.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
-#include "entity/entity.hh"
+#include "std_msgs/UInt16.h"
+#include "std_msgs/UInt8.h"
+
+#include "msg_collection/RealPosition.h"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
-#include "msg_collection/RealPosition.h"
-#include "sensor_msgs/JointState.h"
-#include "math/math.hh"
-#include "std_msgs/UInt16.h"
 
 #include <vector>
-
 #include <termios.h>
 #include <sys/ioctl.h>
 
 #include "master/MachineState.hh"
+#include "entity/entity.hh"
 #include "motion/motion.hh"
 #include "logger/logger.h"
+#include "math/math.hh"
 
 using namespace std;
 
@@ -41,6 +43,7 @@ typedef struct general_data_tag
     ros::Subscriber sub_road_sign;
     ros::Subscriber sub_car_data;
     ros::Subscriber sub_lidar_data;
+    ros::Subscriber sub_stop_signal;
     ros::Timer tim_60_hz;
 
     vector<Lane> left_lane;
@@ -58,6 +61,7 @@ typedef struct general_data_tag
     uint8_t car_side;
     uint8_t moved_state;
     uint16_t sign_type;
+    uint8_t signal_stop;
 
 } general_data_t, *general_data_ptr;
 
@@ -68,9 +72,14 @@ general_data_t general_instance;
 /**
  * 0b000 ==> !data valdi
  * 0b001 ==> data vision valdi
- * 0b011 ==> data lidar valdi
+ * 0b011 ==> data lidar valid
+ * 0b111 ==> data road sign valid
  */
 uint8_t data_validator = 0b000;
+
+//==============================================================================
+
+const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
 
 //==============================================================================
 
@@ -93,7 +102,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
-        float dst = sqrt(pow(raw_obs.x,2)+pow(raw_obs.y,2));
+        float dst = sqrt(pow(raw_obs.x, 2) + pow(raw_obs.y, 2));
         // if (i % 5 == 0)
         //     printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y, dst);
 
@@ -108,7 +117,6 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     }
 
     data_validator |= 0b010;
-    // printf("data validnya %d\n", data_validator);
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -214,7 +222,13 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
-    // printf("sign type %d\n", general_instance.sign_type);
+    printf("sign type %d\n", general_instance.sign_type);
+}
+
+void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
+{
+    general_instance->signal_stop = msg->data;
+    data_validator |= 0b100;
 }
 
 //==============================================================================
