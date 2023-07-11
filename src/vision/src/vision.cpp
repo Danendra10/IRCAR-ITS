@@ -185,8 +185,8 @@ void Tim30HzCllbck(const ros::TimerEvent& event)
     Mat line_bgr;
     cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
 
-    // Detect(line_bgr);
-    Detect(raw_frame);
+    Detect(line_bgr);
+    // Detect(raw_frame);
 
     waitKey(1);
 }
@@ -545,27 +545,49 @@ Mat DrawObsPoints(const vector<ObstaclesPtr>& points)
 
 void Detect(cv::Mat frame)
 {
-    cv::Mat frame_gray, frame_canny;
+    cv::Mat frame_gray, frame_canny, frame_thresh;
     cv::Mat result = frame.clone();
     std::vector<cv::Vec4i> line_hough;
 
     cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
     cv::GaussianBlur(frame_gray, frame_gray, cv::Size(5, 5), 0);
-    cv::Canny(frame_gray, frame_canny, 25, 50);
-    ROI(frame_canny, decision);
-    Hough(frame_canny, line_hough);
+
+    //==Option Edge
+    // cv::Canny(frame_gray, frame_canny, 25, 50);
+    // ROI(frame_canny, decision);
+
+    //==Option Threshold
+    ROI(frame_gray, decision);
+    cv::threshold(frame_gray, frame_thresh, 55, 255, cv::THRESH_BINARY);
+
+    //==Method
+    // Hough(frame_canny, line_hough);
+    if (!frame_thresh.empty()) {
+        BinaryStacking(frame_thresh, result);
+    }
+
     // SlidingWindows(result, line_hough);
-    Display(result, line_hough, 0, 255, 0, 0.2);
-    Average(result, line_hough);
+    // Display(result, line_hough, 0, 255, 0, 0.2);
+    // Average(result, line_hough);
     // Display(result, line_hough, 255, 255, 255, 0.5);
     // setMouseCallback("result", click_event);
 
     cv::Mat frame_canny_resized;
+    cv::Mat frame_thresh_resized;
     cv::Mat result_resized;
-    cv::resize(frame_canny, frame_canny_resized, cv::Size(400,400));
-    cv::resize(result, result_resized, cv::Size(400,400));
-    cv::imshow("edge", frame_canny_resized);
-    cv::imshow("result", result_resized);
+
+    if (!frame_canny.empty()) {
+        cv::resize(frame_canny, frame_canny_resized, cv::Size(400, 400));
+        cv::imshow("edge", frame_canny_resized);
+    }
+    if (!frame_thresh.empty()) {
+        cv::resize(frame_thresh, frame_thresh_resized, cv::Size(400, 400));
+        cv::imshow("thresh", frame_thresh_resized);
+    }
+    if (!result.empty()) {
+        cv::resize(result, result_resized, cv::Size(400, 400));
+        cv::imshow("result", result_resized);
+    }
 }
 
 void ROI(cv::Mat& frame, bool road_part)
@@ -573,15 +595,16 @@ void ROI(cv::Mat& frame, bool road_part)
     cv::Mat frame_mask(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     std::vector<cv::Point> ROI;
 
-    // ROI.push_back(cv::Point(200, frame.rows));
-    // ROI.push_back(cv::Point(1100, frame.rows));
-    // ROI.push_back(cv::Point(555, 290));
-    // ROI.push_back(cv::Point(545, 290));
+    ROI.push_back(cv::Point(295, 700)); //bottom left
+    ROI.push_back(cv::Point(505, 700)); //bottom right
+    ROI.push_back(cv::Point(795, 440)); //top right
+    ROI.push_back(cv::Point(5, 440)); //top left
 
-    ROI.push_back(cv::Point(0, frame.rows / 2 + 40)); //top left
-    ROI.push_back(cv::Point(frame.cols, frame.rows / 2 + 40)); //top right
-    ROI.push_back(cv::Point(frame.cols, frame.rows - 122)); //bottom right
-    ROI.push_back(cv::Point(0, frame.rows - 122)); //bottom left
+    //normal frame
+    // ROI.push_back(cv::Point(0, frame.rows / 2 + 40)); //top left
+    // ROI.push_back(cv::Point(frame.cols, frame.rows / 2 + 40)); //top right
+    // ROI.push_back(cv::Point(frame.cols, frame.rows - 122)); //bottom right
+    // ROI.push_back(cv::Point(0, frame.rows - 122)); //bottom left
 
     std::vector<cv::Point> Ignore;
 
@@ -600,11 +623,11 @@ void ROI(cv::Mat& frame, bool road_part)
     }
 
     fillConvexPoly(frame_mask, ROI, cv::Scalar(255));
-    fillConvexPoly(frame_mask, Ignore, cv::Scalar(0));
+    // fillConvexPoly(frame_mask, Ignore, cv::Scalar(0));
     // cv::rectangle(frame_mask, cv::Point(245, 795), cv::Point(555, 636), cv::Scalar(0), CV_FILLED);
     cv::bitwise_and(frame, frame_mask, frame);
 
-    // cv::imshow("mask", frame_mask);
+    cv::imshow("mask", frame_mask);
 }
 
 void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line)
@@ -967,7 +990,7 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines)
         pub_target.publish(lane);
     }
 
-    std::cout << isWait << std::endl;
+    // std::cout << isWait << std::endl;
     // printf("SLope left fit %f right %f\n", left_fit_avg[0])
 
     std_msgs::Float32 msg_slope;
@@ -1008,32 +1031,227 @@ std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI)
     return std::vector<cv::Vec4i> { cv::Vec4i(x1, y1, x2, y2) };
 }
 
-void SlidingWindows(cv::Mat frame, std::vector<Vec4i> lines)
+std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y)
 {
     std::vector<cv::Rect> windows;
-    const int numWindows = 20;
-    const int windowWidth = 100;
-    const int windowHeight = 20;
-    int xMid[lines.size()];
-    // int windowStep = (frame.rows/2) / numWindows;
+    const int num_windows = 9;
+    const int margin = 50;
+    const int min_px = 100;
+    int window_height = (int)((700 - 440) / (float)num_windows); //from ROI
+    std::vector<int> current_x;
+    std::vector<std::vector<int>> in_window(500);
+    cv::Vec2i win_y;
 
-    for (size_t i = 0; i < lines.size(); i++) {
-        cv::Vec4i line = lines[i];
-        xMid[i] = (line[0] + line[3]) / 2.0;
-        // std::cout<<xMid[i]<<std::endl;
+    for (int i = 0; i < x_final.size(); i++) {
+        current_x.push_back(x_final[i]);
+        Logger(RED, "current_x : %d", current_x[i]);
     }
 
-    for (size_t i = 0; i < numWindows; i++) {
-        int yTop = frame.rows - (i + 1) * windowHeight;
-        int xLeft = xMid[i] - windowWidth / 2.0;
+    std::vector<cv::Vec2i> win_x(current_x.size());
+    for (int i = 0; i < num_windows; i++) {
+        win_y[0] = 700 - (i + 1) * window_height; //from ROI
+        win_y[1] = 700 - i * window_height; //from ROI
+        for (int j = 0; j < current_x.size(); j++) {
+            win_x[j][0] = current_x[j] - margin;
+            win_x[j][1] = current_x[j] + margin;
+            // std::cout << win_x[j] << std::endl;
+            cv::rectangle(frame, cv::Rect(win_x[j][0], win_y[0], win_x[j][1] - win_x[j][0], win_y[1] - win_y[0]), cv::Scalar(255, 0, 0), 2);
 
-        cv::Rect window(xLeft, yTop, windowWidth, windowHeight);
+            for (int k = 0; k < nonzero_x.size(); k++) {
+                if (nonzero_x[k] >= win_x[j][0] && nonzero_x[k] < win_x[j][1] && nonzero_y[k] >= win_y[0] && nonzero_y[k] < win_y[1]) {
+                    in_window[j].push_back(k);
+                }
+            }
 
-        windows.push_back(window);
+            if (in_window[j].size() > min_px) {
+                int sum = 0;
+                for (int k = 0; k < in_window[j].size(); k++) {
+                    sum += nonzero_x[in_window[j][k]];
+                }
+                current_x[j] = sum / in_window[j].size();
+                // Logger(GREEN, "current_x[%d] : %d", j, current_x[j]);
+            }
+        }
+        // std::cout << win_y << std::endl;
     }
 
-    for (size_t i = 0; i < windows.size(); i++) {
-        cv::Rect window = windows[i];
-        cv::rectangle(frame, window, cv::Scalar(0, 255, 0), 1);
+    std::vector<cv::Vec4i> in_points(current_x.size());
+
+    for (int i = 0; i < current_x.size(); i++) {
+        int temp_y_max = 0;
+        int temp_y_min = 800;
+        for (int j = 0; j < in_window[i].size(); j++) {
+            // in_points[i][0] = nonzero_x[in_window[i][j]];
+            // in_points[i][1] = nonzero_y[in_window[i][j]];
+            // cv::circle(frame, cv::Point(in_points[i][0], in_points[i][1]), 1, cv::Scalar((i + 1) * 80, 0, 0), 10);
+            if (nonzero_y[in_window[i][j]] < temp_y_min) {
+                temp_y_min = nonzero_y[in_window[i][j]];
+                in_points[i][0] = nonzero_x[in_window[i][j]];
+            }
+            if (nonzero_y[in_window[i][j]] > temp_y_max) {
+                temp_y_max = nonzero_y[in_window[i][j]];
+                in_points[i][2] = nonzero_x[in_window[i][j]];
+            }
+        }
+        in_points[i][1] = temp_y_min;
+        in_points[i][3] = temp_y_max;
     }
+
+    return in_points;
+}
+
+void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
+{
+    std::vector<cv::Vec2i> nonzero;
+    cv::findNonZero(frame, nonzero);
+
+    std::vector<int> nonzero_y(nonzero.size());
+    std::vector<int> nonzero_x(nonzero.size());
+
+    for (int i = 0; i < nonzero.size(); i++) {
+        nonzero_x[i] = nonzero[i][0];
+        nonzero_y[i] = nonzero[i][1];
+    }
+
+    cv::Mat verticalSum;
+    cv::Mat binaryMask = (frame > 0) / 255;
+    cv::reduce(binaryMask, verticalSum, 0, cv::REDUCE_SUM, CV_32S);
+
+    // std::cout << verticalSum << std::endl;
+
+    const int mid_point = verticalSum.cols / 2.0;
+    bool isZero = true;
+    bool prev_isZero = true;
+    int spike = 0;
+    int spike_final;
+    std::vector<int> start;
+    std::vector<int> stop;
+    std::vector<int> center_x_base;
+    std::vector<int> center_x_final;
+    int counter = 0;
+
+    for (size_t i = 0; i < verticalSum.cols; i++) {
+        prev_isZero = isZero;
+        if (verticalSum.at<int>(0, i) > 0 && prev_isZero) {
+            isZero = false;
+            start.push_back(i);
+            spike++;
+        } else if (verticalSum.at<int>(0, i) == 0 && !prev_isZero) {
+            isZero = true;
+            stop.push_back(i);
+        }
+    }
+
+    for (int i = 0; i < spike; i++) {
+        Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
+    }
+
+    Logger(RED, "spike : %d", spike);
+
+    center_x_base.resize(spike);
+
+    for (int i = 0; i < spike; i++) {
+        CenterSpike(verticalSum, start[i], stop[i], center_x_base[i]);
+        Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
+        if (center_x_base[i] - center_x_base[i - 1] < 80 && i != 0) {
+            center_x_final.pop_back();
+            center_x_final.push_back((center_x_base[i] + center_x_base[i - 1]) / 2.0);
+            counter++;
+        } else {
+            center_x_final.push_back(center_x_base[i]);
+        }
+
+        //==Debug Sliding Windows Coverage with Noise
+        // cv::circle(frame_dst, cv::Point(center_x_base[i], 720), 3, cv::Scalar(255, 0, 0), 10);
+        // cv::circle(frame_dst, cv::Point(center_x_base[i], 460), 3, cv::Scalar(255, 0, 0), 10);
+    }
+
+    spike_final = spike - counter;
+
+    //==Debug Sliding Windows Coverage Final
+    // for (int i = 0; i < spike_final; i++) {
+    //     cv::circle(frame_dst, cv::Point(center_x_final[i], 700), 3, cv::Scalar(i * 50, 255, 0), 10);
+    //     cv::circle(frame_dst, cv::Point(center_x_final[i], 440), 3, cv::Scalar(i * 50, 255, 0), 10);
+    // }
+
+    std::vector<cv::Vec4i> in_points = SlidingWindows(frame_dst, center_x_final, nonzero_x, nonzero_y);
+
+    double slope[in_points.size()];
+    double intercept[in_points.size()];
+
+    Display(frame_dst, in_points, 255, 255, 255, 0.3);
+    for (int i = 0; i < in_points.size(); i++) {
+        SlopeIntercept(in_points[i], slope[i], intercept[i]);
+    }
+
+    int y1 = frame.rows - 180;
+    int x1 = (int)((y1 - intercept[1]) / slope[1]);
+
+    x_target_left = x1;
+    y_target_left = y1;
+    x_target_right = (in_points[1][0] + in_points[2][0]) / 2.0;
+    y_target_right = (in_points[1][1] + in_points[2][1]) / 2.0;
+
+    cv::circle(frame_dst, cv::Point(x_target_left, y_target_left), 3, cv::Scalar(255, 255, 0), 7);
+    // cv::circle(frame_dst, cv::Point(x_target_right, y_target_right), 3, cv::Scalar(0, 255, 255), 7);
+
+    msg_collection::RealPosition lane;
+    float dist_x_left = 800 - y_target_left;
+    float dist_y_left = x_target_left - 400;
+    float dist_x_right = 800 - y_target_right;
+    float dist_y_right = x_target_right - 400;
+
+    float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
+    float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
+    float angle_diff_left = atan(dist_x_left / dist_y_left);
+    float angle_diff_right = atan(dist_x_right / dist_y_right);
+
+    if (dist_y_left < 0)
+        angle_diff_left += DEG2RAD(180);
+    if (dist_y_right < 0)
+        angle_diff_right += DEG2RAD(180);
+
+    // printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
+
+    lane.target_x_left = distance_left * sin(angle_diff_left);
+    lane.target_y_left = distance_left * cos(angle_diff_left);
+    lane.target_x_right = distance_right * sin(angle_diff_right);
+    lane.target_y_right = distance_right * cos(angle_diff_right);
+
+    // printf("bef %f %f || nnnn %f %f\n", dist_x_left, dist_y_left, lane.target_x_left, lane.target_y_left);
+
+    pub_target.publish(lane);
+}
+
+void CenterSpike(cv::Mat frame, int start, int stop, int& index)
+{
+    int a = 0;
+    int b = 0;
+    int temp = 0;
+    for (int i = start; i <= stop; i++) {
+        a += frame.at<int>(0, i) * i;
+        b += frame.at<int>(0, i);
+
+        if (frame.at<int>(0, i) > temp) {
+            temp = frame.at<int>(0, i);
+            index = i;
+        }
+    }
+    // index = (int)(a / (float)(b));
+    // Logger(GREEN, "center x : %d", index);
+}
+
+void SlopeIntercept(cv::Vec4i& lines, double& slope, double& intercept)
+{
+    double x1 = lines[0];
+    double y1 = lines[1];
+    double x2 = lines[2];
+    double y2 = lines[3];
+
+    slope = (y2 - y1) / (x2 - x1);
+    intercept = y1 - (slope * x1);
+}
+
+void Average_BinaryStacking(cv::Mat frame, cv::Vec4i& lines)
+{
 }

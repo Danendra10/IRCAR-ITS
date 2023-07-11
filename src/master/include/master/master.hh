@@ -214,7 +214,7 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
-    printf("sign type %d\n", general_instance.sign_type);
+    // printf("sign type %d\n", general_instance.sign_type);
 }
 
 //==============================================================================
