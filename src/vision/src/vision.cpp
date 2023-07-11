@@ -595,10 +595,10 @@ void ROI(cv::Mat& frame, bool road_part)
     cv::Mat frame_mask(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     std::vector<cv::Point> ROI;
 
-    ROI.push_back(cv::Point(295, 700)); //bottom left
-    ROI.push_back(cv::Point(505, 700)); //bottom right
-    ROI.push_back(cv::Point(795, 440)); //top right
-    ROI.push_back(cv::Point(5, 440)); //top left
+    ROI.push_back(cv::Point(200, 700)); //bottom left
+    ROI.push_back(cv::Point(600, 700)); //bottom right
+    ROI.push_back(cv::Point(580, 440)); //top right
+    ROI.push_back(cv::Point(220, 440)); //top left
 
     //normal frame
     // ROI.push_back(cv::Point(0, frame.rows / 2 + 40)); //top left
@@ -1044,7 +1044,7 @@ std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, 
 
     for (int i = 0; i < x_final.size(); i++) {
         current_x.push_back(x_final[i]);
-        Logger(RED, "current_x : %d", current_x[i]);
+        // Logger(RED, "current_x : %d", current_x[i]);
     }
 
     std::vector<cv::Vec2i> win_x(current_x.size());
@@ -1143,16 +1143,16 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     }
 
     for (int i = 0; i < spike; i++) {
-        Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
+        // Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
     }
 
-    Logger(RED, "spike : %d", spike);
+    // Logger(RED, "spike : %d", spike);
 
     center_x_base.resize(spike);
 
     for (int i = 0; i < spike; i++) {
         CenterSpike(verticalSum, start[i], stop[i], center_x_base[i]);
-        Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
+        // Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
         if (center_x_base[i] - center_x_base[i - 1] < 80 && i != 0) {
             center_x_final.pop_back();
             center_x_final.push_back((center_x_base[i] + center_x_base[i - 1]) / 2.0);
@@ -1182,45 +1182,77 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     Display(frame_dst, in_points, 255, 255, 255, 0.3);
     for (int i = 0; i < in_points.size(); i++) {
         SlopeIntercept(in_points[i], slope[i], intercept[i]);
+        // Logger(BLUE, "in_point[%d]", i);
     }
 
-    int y1 = frame.rows - 180;
-    int x1 = (int)((y1 - intercept[1]) / slope[1]);
+    if (spike_final != prev_spike) {
+        prev_spike = spike_final;
+        for (int i = 0; i < in_points.size(); i++) {
+            if (abs(prev_x_target - in_points[i][0]) < 100 && abs(prev_x_target - in_points[i][2]) < 100) {
+                road_target = i;
+                Logger(YELLOW, "New Road Target %d", i);
+                checker = false;
+                break;
+            }
+        }
+        if (checker) {
+            Logger(RED, "SOMETHING WRONG IN ROAD TARGET");
+            Logger(YELLOW, "current road target %d", road_target);
+            Logger(YELLOW, "current prev x target %d", prev_x_target);
+            Logger(YELLOW, "current prev spike %d", prev_spike);
+            x_target = prev_x_target;
+            y_target = frame.rows - 180;
+        }
+    }
 
-    x_target_left = x1;
-    y_target_left = y1;
-    x_target_right = (in_points[1][0] + in_points[2][0]) / 2.0;
-    y_target_right = (in_points[1][1] + in_points[2][1]) / 2.0;
+    if (spike_final > 0) {
+        if (!checker) {
+            y_target = frame.rows - 180;
+            x_target = (int)((y_target - intercept[road_target]) / slope[road_target]);
+        } else {
+            checker = false;
+        }
+        Logger(BLUE, "x1 : %d y1 : %d", x_target, y_target);
 
-    cv::circle(frame_dst, cv::Point(x_target_left, y_target_left), 3, cv::Scalar(255, 255, 0), 7);
-    // cv::circle(frame_dst, cv::Point(x_target_right, y_target_right), 3, cv::Scalar(0, 255, 255), 7);
+        prev_x_target = x_target;
 
-    msg_collection::RealPosition lane;
-    float dist_x_left = 800 - y_target_left;
-    float dist_y_left = x_target_left - 400;
-    float dist_x_right = 800 - y_target_right;
-    float dist_y_right = x_target_right - 400;
+        x_target_left = x_target;
+        y_target_left = y_target;
+        x_target_right = (in_points[1][0] + in_points[2][0]) / 2.0;
+        y_target_right = (in_points[1][1] + in_points[2][1]) / 2.0;
 
-    float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
-    float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
-    float angle_diff_left = atan(dist_x_left / dist_y_left);
-    float angle_diff_right = atan(dist_x_right / dist_y_right);
+        cv::circle(frame_dst, cv::Point(x_target_left, y_target_left), 3, cv::Scalar(255, 255, 0), 7);
+        // cv::circle(frame_dst, cv::Point(x_target_right, y_target_right), 3, cv::Scalar(0, 255, 255), 7);
 
-    if (dist_y_left < 0)
-        angle_diff_left += DEG2RAD(180);
-    if (dist_y_right < 0)
-        angle_diff_right += DEG2RAD(180);
+        msg_collection::RealPosition lane;
+        float dist_x_left = 800 - y_target_left;
+        float dist_y_left = x_target_left - 400;
+        float dist_x_right = 800 - y_target_right;
+        float dist_y_right = x_target_right - 400;
 
-    // printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
+        float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
+        float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
+        float angle_diff_left = atan(dist_x_left / dist_y_left);
+        float angle_diff_right = atan(dist_x_right / dist_y_right);
 
-    lane.target_x_left = distance_left * sin(angle_diff_left);
-    lane.target_y_left = distance_left * cos(angle_diff_left);
-    lane.target_x_right = distance_right * sin(angle_diff_right);
-    lane.target_y_right = distance_right * cos(angle_diff_right);
+        if (dist_y_left < 0)
+            angle_diff_left += DEG2RAD(180);
+        if (dist_y_right < 0)
+            angle_diff_right += DEG2RAD(180);
 
-    // printf("bef %f %f || nnnn %f %f\n", dist_x_left, dist_y_left, lane.target_x_left, lane.target_y_left);
+        // printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
 
-    pub_target.publish(lane);
+        lane.target_x_left = distance_left * sin(angle_diff_left);
+        lane.target_y_left = distance_left * cos(angle_diff_left);
+        lane.target_x_right = distance_right * sin(angle_diff_right);
+        lane.target_y_right = distance_right * cos(angle_diff_right);
+
+        Logger(GREEN, "x_pub : %d y_pub : %d", lane.target_x_left, lane.target_y_left);
+
+        // printf("bef %f %f || nnnn %f %f\n", dist_x_left, dist_y_left, lane.target_x_left, lane.target_y_left);
+
+        pub_target.publish(lane);
+    }
 }
 
 void CenterSpike(cv::Mat frame, int start, int stop, int& index)

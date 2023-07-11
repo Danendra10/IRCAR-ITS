@@ -83,6 +83,11 @@ bool decision = LeftLane;
 #define RightLost 2
 int8_t prev_state;
 bool isWait = false;
+int road_target = 1;
+int prev_x_target = 6969;
+int prev_spike = 3;
+int x_target, y_target;
+bool checker = true;
 
 PolynomialRegression polynom(DEGREE);
 

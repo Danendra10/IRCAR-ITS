@@ -416,12 +416,11 @@ void RobotMovement(general_data_ptr data)
     if (abs(delta) < 0.05)
     {
         data->car_vel.th = 0;
-        data->car_vel.x = 10.8;
+        data->car_vel.x = 12;
     }
 
-    else
-    {
-        data->car_vel.x = 10.8;
+    else {
+        data->car_vel.x = 12;
         if (data->car_target_left.y < 0)
             data->car_vel.th = RAD2DEG(delta) / 24;
         // data->car_vel.th = RAD2DEG(delta) / (data->car_vel.x / 0.1);
