@@ -1,6 +1,6 @@
 #include "master/master.hh"
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     ros::init(argc, argv, "master");
     ros::NodeHandle NH;
@@ -22,22 +22,24 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void CllbckTim60Hz(const ros::TimerEvent& event)
+void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
     // AutoDrive(&general_instance);
-    DecideCarTarget(&general_instance);
+    // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
 void GetKeyboard()
 {
     static uint8_t prev_key = 0;
-    if (kbhit() > 0) {
+    if (kbhit() > 0)
+    {
         char key = std::cin.get();
 
-        switch (key) {
+        switch (key)
+        {
         case 'w':
             general_instance.main_state.value = FORWARD;
             break;
@@ -71,9 +73,10 @@ void MoveRobot(float vx_, float vz_)
 
 void SimulatorState()
 {
-    switch (general_instance.main_state.value) {
+    switch (general_instance.main_state.value)
+    {
     case FORWARD:
-        MoveRobot(2, 0);
+        MoveRobot(5, 0);
         break;
 
     case BACKWARD:
@@ -104,14 +107,19 @@ void SimulatorState()
 
 void AutoDrive(general_data_ptr data)
 {
-    try {
-        if (data_validator < 0b001) {
+    try
+    {
+        if (data_validator < 0b001)
+        {
             // Logger(RED, "Data hasn't been validated yet");
             return;
         }
-        if (data->sign_type == NO_SIGN) {
+        if (data->sign_type == NO_SIGN)
+        {
             data->main_state.value = AUTONOMOUS_NO_SIGN;
-        } else {
+        }
+        else
+        {
             if (data->sign_type == SIGN_STOP)
                 data->main_state.value = AUTONOMOUS_STOP_SIGN;
             if (data->sign_type == SIGN_LEFT)
@@ -132,7 +140,8 @@ void AutoDrive(general_data_ptr data)
 
         Logger(BLUE, "AutoDrive: %d", data->main_state.value);
 
-        switch (data->main_state.value) {
+        switch (data->main_state.value)
+        {
         case AUTONOMOUS_NO_SIGN:
             RobotMovement(data);
             break;
@@ -149,7 +158,9 @@ void AutoDrive(general_data_ptr data)
             KeepForward(data);
             break;
         }
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << e.what() << '\n';
     }
 }
@@ -247,7 +258,8 @@ void KeepForward(general_data_ptr general_data)
 
     int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
 
-    if (size_of_middle_lane_close_to_robot == -1) {
+    if (size_of_middle_lane_close_to_robot == -1)
+    {
         // keep forward
         general_data->car_target_left.x = general_data->car_pose.x + 0.5;
         general_data->car_target_left.y = general_data->car_pose.y;
@@ -255,18 +267,24 @@ void KeepForward(general_data_ptr general_data)
     }
 
     // Check if the robot's angle is linear with the angle of the lane
-    if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
+    if (middle_lane_size > 400 && abs(dist_between_points) < 20)
+    {
         // The robot's angle is linear with the angle of the lane, keep moving forward
         general_data->car_target_left.x = general_data->car_pose.x;
         general_data->car_target_left.y = general_data->car_pose.y;
         general_data->car_target_left.th = general_data->car_pose.th;
-    } else {
+    }
+    else
+    {
         // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
-        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0)) {
+        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
+        {
             general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
             general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
             general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
-        } else {
+        }
+        else
+        {
             // The robot's angle is not linear and no specific side is determined, keep moving forward
             general_data->car_target_left.x = general_data->car_pose.x;
             general_data->car_target_left.y = general_data->car_pose.y;
@@ -280,7 +298,8 @@ void KeepForward(general_data_ptr general_data)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
-    try {
+    try
+    {
         if (data_validator < 0b001)
             return;
         int lane_buffer_x, lane_buffer_y;
@@ -293,10 +312,13 @@ void DecideCarTarget(general_data_ptr general_data)
 
         // printf("from left %f || from right %f\n", car_to_left, car_to_right);
 
-        if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
+        if (middle_lane_size > 400 && abs(dist_between_points) < 20)
+        {
             lane_buffer_x = general_data->middle_lane[middle_lane_size - 1].x;
             lane_buffer_y = general_data->middle_lane[middle_lane_size - 1].y;
-        } else {
+        }
+        else
+        {
             general_data->middle_lane[middle_lane_size - 1].x = lane_buffer_x;
             general_data->middle_lane[middle_lane_size - 1].y = lane_buffer_y;
         }
@@ -344,7 +366,9 @@ void DecideCarTarget(general_data_ptr general_data)
             return;
         if (general_data->middle_lane[middle_lane_size - 1].x == 0)
             return;
-    } catch (...) {
+    }
+    catch (...)
+    {
         printf("error\n");
     }
 }
@@ -378,12 +402,14 @@ void RobotMovement(general_data_ptr data)
 
     float delta = atan(2 * l * sin(alpha) / ld);
     // printf("delta %f\n", delta);
-    if (abs(delta) < 0.05) {
+    if (abs(delta) < 0.05)
+    {
         data->car_vel.th = 0;
         data->car_vel.x = 10.8;
     }
 
-    else {
+    else
+    {
         data->car_vel.x = 10.8;
         if (data->car_target_left.y < 0)
             data->car_vel.th = RAD2DEG(delta) / 24;

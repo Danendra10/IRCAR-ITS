@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -40,4 +41,4 @@ add_executable(anderdevelop_cpp src/anderdevelop.cpp)
 target_link_libraries(anderdevelop_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
 
 add_executable(road_sign_detector src/road_sign_detector.cpp)
-target_link_libraries(road_sign_detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
+target_link_libraries(road_sign_detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAML_CPP_LIBRARIES} entity_lib math_lib logger_lib)
