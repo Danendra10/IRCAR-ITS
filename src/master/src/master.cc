@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 40), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -31,8 +31,8 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    AutoDrive(&general_instance);
-    DecideCarTarget(&general_instance);
+    // AutoDrive(&general_instance);
+    // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -114,10 +114,8 @@ void AutoDrive(general_data_ptr data)
 {
     try
     {
-        printf("data validator: %d\n", data_validator);
         if (data_validator < 0b111)
         {
-
             return;
         }
         if (data->sign_type == NO_SIGN)
@@ -127,13 +125,25 @@ void AutoDrive(general_data_ptr data)
         else
         {
             if (data->sign_type == SIGN_STOP)
+            {
+                // Logger(CYAN, "Detected a Stop Sign");
                 data->main_state.value = AUTONOMOUS_STOP_SIGN;
+            }
             if (data->sign_type == SIGN_LEFT)
+            {
+                // Logger(CYAN, "Detected a Left Sign");
                 data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
+            }
             if (data->sign_type == SIGN_RIGHT)
+            {
+                // Logger(CYAN, "Detected a Right Sign");
                 data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+            }
             if (data->sign_type == SIGN_FORWARD)
+            {
+                // Logger(CYAN, "Detected a Forward Sign");
                 data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
+            }
             // if (data->sign_type == SIGN_DEAD_END)
             //     data->main_state.value = AUTONOMOUS_DEAD_END;
             // if (data->sign_type == SIGN_NO_ENTRY)
@@ -143,8 +153,6 @@ void AutoDrive(general_data_ptr data)
             // if (data->sign_type == SIGN_END_TUNNEL)
             //     data->main_state.value = AUTONOMOUS_END_TUNNEL;
         }
-
-        Logger(BLUE, "AutoDrive: %d", data->main_state.value);
 
 #ifdef DRIVE
         switch (data->main_state.value)
@@ -173,6 +181,10 @@ void AutoDrive(general_data_ptr data)
     catch (const std::exception &e)
     {
         std::cerr << e.what() << '\n';
+    }
+    catch (...)
+    {
+        std::cout << "Error cought in line: " << __LINE__ << std::endl;
     }
 }
 
@@ -321,7 +333,7 @@ void DecideCarTarget(general_data_ptr general_data)
         float car_to_right = sqrt(pow(pixel_to_real(700 - general_data->right_lane[right_lane_size - 1].y), 2) + pow(pixel_to_real(general_data->right_lane[right_lane_size - 1].x - 400), 2));
         int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
 
-        // printf("from left %f || from right %f\n", car_to_left, car_to_right);
+        printf("from left %f || from right %f\n", car_to_left, car_to_right);
 
         if (middle_lane_size > 400 && abs(dist_between_points) < 20)
         {
@@ -341,6 +353,7 @@ void DecideCarTarget(general_data_ptr general_data)
         //     general_data->car_side = 10;
         // else if ((car_to_left - car_to_right > 3 && general_data->obs_status == 0) || general_data->obs_status == 2)
         //     general_data->car_side = 20;
+
         if (general_data->obs_status == 0)
             general_data->car_side = 0;
         else if (general_data->obs_status == 1)
@@ -377,10 +390,16 @@ void DecideCarTarget(general_data_ptr general_data)
             return;
         if (general_data->middle_lane[middle_lane_size - 1].x == 0)
             return;
+        throw std::runtime_error("An error occurred!"); // Example error
     }
-    catch (std::exception &e)
+    catch (const std::exception &e)
     {
-        std::cout << "Error cought on Line: " << __LINE__ << std::endl;
+        std::cout << "Error occurred on line: " << __LINE__ << std::endl;
+        std::cout << "Error message: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        ROS_ERROR_STREAM("Error caught on line: " << __LINE__);
     }
 }
 
@@ -419,7 +438,8 @@ void RobotMovement(general_data_ptr data)
         data->car_vel.x = 12;
     }
 
-    else {
+    else
+    {
         data->car_vel.x = 12;
         if (data->car_target_left.y < 0)
             data->car_vel.th = RAD2DEG(delta) / 24;
@@ -437,10 +457,10 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
-    if (general_instance.signal_stop)
-    {
-        vel_msg.angular.z = 0;
-        vel_msg.linear.x = 0;
-    }
+    // if (general_instance.signal_stop)
+    // {
+    //     vel_msg.angular.z = 0;
+    //     vel_msg.linear.x = 0;
+    // }
     data->pub_car_vel.publish(vel_msg);
 }

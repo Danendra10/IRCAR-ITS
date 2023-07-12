@@ -66,9 +66,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         counter = 0;
 
     if (distance_to_detected_sign > distance_to_road_sign_threshold)
-    {
         stop_signal = 1;
-    }
     else
         stop_signal = 0;
 
@@ -89,12 +87,18 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     }
     else if (min_index == -1 && counter > threshold_counter_road_sign)
     {
+        distance_to_detected_sign = 0;
         std_msgs::UInt16 msg;
         msg.data = 8;
         pub_detected_sign_data.publish(msg);
     }
 
     imshow("Raw Frame", frame_raw);
+
+    std_msgs::UInt8 msg_signal;
+    msg_signal.data = stop_signal;
+    pub_signal_stop.publish(msg_signal);
+
     waitKey(1);
 }
 

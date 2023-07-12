@@ -16,6 +16,7 @@
 #include <vector>
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <exception>
 
 #include "master/MachineState.hh"
 #include "entity/entity.hh"
@@ -175,6 +176,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     general_instance.car_target_left.y = msg->target_y_left;
     general_instance.car_target_right.x = msg->target_x_right;
     general_instance.car_target_right.y = msg->target_y_right;
+    data_validator |= 0b001;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
@@ -222,13 +224,13 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
-    printf("sign type %d\n", general_instance.sign_type);
+    data_validator |= 0b100;
 }
 
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
-    data_validator |= 0b100;
+    // printf("signal stop %d\n", general_instance->signal_stop);
 }
 
 //==============================================================================

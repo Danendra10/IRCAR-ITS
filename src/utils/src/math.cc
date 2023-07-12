@@ -116,3 +116,47 @@ int SizeOfLane(vector<Lane> lanes, int start_idx, int end_idx)
         return -1;
     return size;
 }
+
+void CalcTrapezoidalMotion(double distance, double max_velocity, double acceleration, double deceleration)
+{
+    printf("Distance: %.2lf\n", distance);
+    std::vector<double> time;
+    std::vector<double> velocity;
+    std::vector<double> pos;
+
+    double acceleration_time = max_velocity / acceleration;                                    // a_time = v_max / a
+    double deceleration_time = max_velocity / deceleration;                                    // d_time = v_max / d
+    double acceleration_distance = 0.5 * acceleration * acceleration_time * acceleration_time; // a_dist = 0.5 * a * a_time^2
+    double deceleration_distance = 0.5 * deceleration * deceleration_time * deceleration_time; // d_dist = 0.5 * d * d_time^2
+    double remaining_distance = distance - acceleration_distance - deceleration_distance;      // r_dist = dist - a_dist - d_dist || remaining distance is the distance covered at max velocity
+
+    if (remaining_distance < 0)
+    {
+        acceleration_distance = (distance * acceleration) / (acceleration + deceleration); // this will calculate the distance covered during acceleration and deceleration
+        deceleration_distance = acceleration_distance;
+        acceleration_time = sqrt(2 * acceleration_distance / acceleration); // this will calculate the time taken for acceleration and deceleration
+        deceleration_time = sqrt(2 * deceleration_distance / deceleration);
+        remaining_distance = 0;
+    }
+
+    double total_time = acceleration_time + deceleration_time + (remaining_distance / max_velocity);
+
+    double current_time = 0;
+    while (current_time <= total_time)
+    {
+        double current_velocity;
+        if (current_time < acceleration_time)
+            current_velocity = acceleration * current_time; // this will calculate the velocity during acceleration before reaching max velocity
+        else if (current_time < (total_time - deceleration_time))
+            current_velocity = max_velocity; // this is the moment when the max velocity is reached before deceleration
+        else
+            current_velocity = max_velocity - deceleration * (current_time - (total_time - deceleration_time)); // this will calculate the velocity during deceleration after reaching max velocity
+
+        double current_position;
+
+        time.push_back(current_time);
+        velocity.push_back(current_velocity);
+
+        current_time += 0.1; // Step size for plotting
+    }
+}
