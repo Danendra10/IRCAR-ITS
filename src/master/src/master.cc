@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 20), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -31,7 +31,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     GetKeyboard();
     SimulatorState();
-    // AutoDrive(&general_instance);
+    AutoDrive(&general_instance);
     // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
@@ -81,7 +81,7 @@ void SimulatorState()
     switch (general_instance.main_state.value)
     {
     case FORWARD:
-        MoveRobot(5, 0);
+        MoveRobot(2, 0);
         break;
 
     case BACKWARD:
@@ -153,6 +153,8 @@ void AutoDrive(general_data_ptr data)
             // if (data->sign_type == SIGN_END_TUNNEL)
             //     data->main_state.value = AUTONOMOUS_END_TUNNEL;
         }
+
+        printf("Sign stop: %d\n", data->signal_stop);
 
 #ifdef DRIVE
         switch (data->main_state.value)
@@ -435,12 +437,12 @@ void RobotMovement(general_data_ptr data)
     if (abs(delta) < 0.05)
     {
         data->car_vel.th = 0;
-        data->car_vel.x = 12;
+        data->car_vel.x = 2;
     }
 
     else
     {
-        data->car_vel.x = 12;
+        data->car_vel.x = 2;
         if (data->car_target_left.y < 0)
             data->car_vel.th = RAD2DEG(delta) / 24;
         // data->car_vel.th = RAD2DEG(delta) / (data->car_vel.x / 0.1);

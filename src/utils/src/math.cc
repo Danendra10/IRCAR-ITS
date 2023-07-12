@@ -160,3 +160,27 @@ void CalcTrapezoidalMotion(double distance, double max_velocity, double accelera
         current_time += 0.1; // Step size for plotting
     }
 }
+
+void CalculateTargetToTurnLeft90Degree(CarPose current_car_pose, Pose3D *target_to_turn_left_90_degree)
+{
+    double x = current_car_pose.x;
+    double y = current_car_pose.y;
+    double theta = current_car_pose.th;
+
+    /**
+     * This is the formula to calculate the target to turn left 90 degree
+     * x1 = x + 0.5 * cos(theta)
+     * y1 = y + 0.5 * sin(theta)
+     *
+     * its the equation of
+     */
+    double x1 = x + 0.5 * cos(theta);
+    double y1 = y + 0.5 * sin(theta);
+
+    double x2 = x1 + 0.5 * cos(theta + M_PI / 2);
+    double y2 = y1 + 0.5 * sin(theta + M_PI / 2);
+
+    target_to_turn_left_90_degree->x = x2;
+    target_to_turn_left_90_degree->y = y2;
+    target_to_turn_left_90_degree->th = theta + M_PI / 2;
+}
