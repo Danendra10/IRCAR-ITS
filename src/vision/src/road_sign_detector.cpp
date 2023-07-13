@@ -42,16 +42,37 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 {
     if (validator != 0b001)
         return;
-    cv::aruco::detectMarkers(frame_raw, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
+    output_image = frame_raw.clone();
 
-    cv::aruco::drawDetectedMarkers(frame_raw, marker_corners, marker_ids);
-    // find the closest marker
+    //---Preprocessing
+    /**
+     * @brief I use thresholding to make the image black and white, then erode and dilate to remove noise
+     * in this case it could decrease the noise from the raw image, i got better result with this method
+     * if you came up with better method, please make a pull request and i'll review it.
+     */
+    cvtColor(frame_raw, frame_gray, CV_BGR2GRAY);
+    threshold(frame_gray, thresholded, 160, 255, THRESH_BINARY);
+    erode(thresholded, thresholded, Mat(), Point(-1, -1), 2);
+    dilate(thresholded, thresholded, Mat(), Point(-1, -1), 2);
+
+    //--->Aruco Detect marker using the thresholded image
+    aruco::detectMarkers(thresholded, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
+    aruco::drawDetectedMarkers(output_image, marker_corners, marker_ids);
+
+    //---find the closest marker
     float min_dist = 1000000;
     int min_index = -1;
+    static int prev_min_index = -1;
+
+    /**
+     * @brief This for loop is used to find the closest marker to the camera
+     * here we have the pre-defined minimum distance, if the distance of the marker is less than the minimum distance
+     * then we update the minimum distance and the index of the marker
+     */
     for (int i = 0; i < marker_ids.size(); ++i)
     {
         int id = marker_ids[i];
-        cv::Point2f center = (marker_corners[i][0] + marker_corners[i][1] + marker_corners[i][2] + marker_corners[i][3]) / 4;
+        Point2f center = (marker_corners[i][0] + marker_corners[i][1] + marker_corners[i][2] + marker_corners[i][3]) / 4;
         float dist = sqrt(center.x * center.x + center.y * center.y);
         if (dist < min_dist)
         {
@@ -60,29 +81,41 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         }
     }
 
+    //---Safety check
+    /**
+     * @brief This is a safety check, if the minimum index is -1, then we increase the counter
+     * minimum index return -1 if there is no marker detected, so we increase the counter
+     * if the counter is greater than the threshold, then we assume that there is no marker detected
+     * the threshold could be found in static_conf.yaml
+     */
     if (min_index == -1)
         counter++;
     else
-        counter = 0;
-
-    if (distance_to_detected_sign > distance_to_road_sign_threshold)
-        stop_signal = 1;
-    else
-        stop_signal = 0;
-
-    // printf("stop_signal: %d || Distance to detected sign: %f\n", stop_signal, distance_to_detected_sign);
-
-    if (min_index != -1 && counter < threshold_counter_road_sign)
     {
-        int id = marker_ids[min_index];
-        cv::Point2f center = (marker_corners[min_index][0] + marker_corners[min_index][1] + marker_corners[min_index][2] + marker_corners[min_index][3]) / 4;
-        float c_x = (marker_corners[min_index][0].x + marker_corners[min_index][1].x + marker_corners[min_index][2].x + marker_corners[min_index][3].x) / 4;
-        float c_y = (marker_corners[min_index][0].y + marker_corners[min_index][1].y + marker_corners[min_index][2].y + marker_corners[min_index][3].y) / 4;
+        counter = 0;
+        prev_min_index = min_index;
+    }
+
+    printf("counter: %d\n", counter);
+
+    if (counter < threshold_counter_road_sign)
+    {
+        int id = marker_ids[prev_min_index];
+        Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
+        float c_x = (marker_corners[prev_min_index][0].x + marker_corners[prev_min_index][1].x + marker_corners[prev_min_index][2].x + marker_corners[prev_min_index][3].x) / 4;
+        float c_y = (marker_corners[prev_min_index][0].y + marker_corners[prev_min_index][1].y + marker_corners[prev_min_index][2].y + marker_corners[prev_min_index][3].y) / 4;
         distance_to_detected_sign = sqrt(pow(center.x - center_cam_x, 2) + pow(center.y - center_cam_y, 2));
-        // printf("Detected point: (%f, %f) => Distance %f\n", center.x, center.y, distance_to_detected_sign);
-        cv::putText(frame_raw, commands[id], center, cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
+
+        putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
         std_msgs::UInt16 msg;
-        msg.data = id;
+        // printf("Distance to detected sign %f || state %d\n", distance_to_detected_sign, distance_to_detected_sign < distance_to_road_sign_threshold);
+        if (center.x > x_pos_road_sign_threshold && center.y < y_pos_road_sign_threshold)
+        {
+            printf("Turn To %s\n", commands[id].c_str());
+            msg.data = id;
+        }
+        else
+            msg.data = 8;
         pub_detected_sign_data.publish(msg);
     }
     else
@@ -92,8 +125,9 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         msg.data = 8;
         pub_detected_sign_data.publish(msg);
     }
-
+    imshow("thresholded", thresholded);
     imshow("Raw Frame", frame_raw);
+    imshow("Out Frame", output_image);
 
     std_msgs::UInt8 msg_signal;
     msg_signal.data = stop_signal;
@@ -105,9 +139,9 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 int ArucoInit()
 {
     LoadConfig();
-    detector_params = cv::aruco::DetectorParameters();
-    detector_params_ptr = cv::makePtr<cv::aruco::DetectorParameters>(detector_params);
-    dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11);
+    detector_params = aruco::DetectorParameters();
+    detector_params_ptr = makePtr<aruco::DetectorParameters>(detector_params);
+    dictionary = aruco::getPredefinedDictionary(aruco::DICT_APRILTAG_36h11);
     return 0;
 }
 
@@ -124,6 +158,8 @@ void LoadConfig()
         YAML::Node config = YAML::LoadFile(cfg_file);
         threshold_counter_road_sign = config["threshold_counter_road_sign"].as<int>();
         distance_to_road_sign_threshold = config["distance_to_road_sign_threshold"].as<int>();
+        x_pos_road_sign_threshold = config["x_pos_road_sign_threshold"].as<int>();
+        y_pos_road_sign_threshold = config["y_pos_road_sign_threshold"].as<int>();
     }
     catch (YAML::BadFile &e)
     {

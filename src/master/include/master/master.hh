@@ -107,7 +107,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     {
         general_instance.obs_status = 0;
 
-        // data_validator |= 0b010;
+        data_validator |= 0b010;
         return;
     }
 

@@ -31,6 +31,7 @@ image_transport::Subscriber sub_raw_frame;
 //---Matrix
 cv::Mat frame_raw;
 cv::Mat frame_gray;
+cv::Mat thresholded;
 cv::Mat output_image = frame_raw.clone();
 
 //---Aruco
@@ -51,6 +52,8 @@ int counter = 0;
 float distance_to_detected_sign;
 uint8_t threshold_counter_road_sign;
 int distance_to_road_sign_threshold;
+int x_pos_road_sign_threshold;
+int y_pos_road_sign_threshold;
 uint8_t stop_signal;
 int center_cam_x = 400;
 int center_cam_y = 800;

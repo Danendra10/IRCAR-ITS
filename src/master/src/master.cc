@@ -9,7 +9,7 @@
 
 #include "master/master.hh"
 
-#define DRIVE
+// #define DRIVE
 
 int main(int argc, char **argv)
 {
@@ -39,13 +39,14 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
+    // printf("Data Validator: %d\n", data_validator);
     // if (data_validator < 0b111)
     //     return;
     GetKeyboard();
     SimulatorState();
     // AutoDrive(&general_instance);
     // TurnCarRight90Degree2(&general_instance, -5, 10);
-    DecideCarTarget(&general_instance);
+    // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -127,22 +128,30 @@ void AutoDrive(general_data_ptr data)
 {
     try
     {
-        if (data_validator < 0b1111)
-        {
+        if (data_validator < 0b111)
             return;
-        }
-        // Define a variable to store the previous sign type
-        static int previous_sign_type = NO_SIGN;
+
+        static bool is_unlocked = true; // Initialize the locked state variable
 
         switch (data->sign_type)
         {
         case NO_SIGN:
-            Logger(CYAN, "No Sign Detected");
-            data->main_state.value = AUTONOMOUS_NO_SIGN;
+            if (is_unlocked)
+            {
+                Logger(RED, "No Sign Detected");
+                // DecideCarTarget(data);
+            }
             break;
         case SIGN_RIGHT:
-            Logger(CYAN, "Detected a Right Sign");
-            data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+            if (is_unlocked)
+                is_unlocked = false;
+            Logger(RED, "Entered State Sign Right");
+            if (TurnCarRight90Degree2(data, 0.5, 10))
+            {
+                Logger(RED, "Detected a Right Sign");
+                is_unlocked = true;
+                data->sign_type = NO_SIGN;
+            }
             break;
         }
 
@@ -331,7 +340,7 @@ void TurnCarRight90Degree(general_data_ptr general_data)
 
 void SetRobotSteering(general_data_ptr general_data, float steering)
 {
-    general_data->car_vel.x = 1;
+    general_data->car_vel.x = 0.5;
     general_data->car_vel.th = steering;
 }
 

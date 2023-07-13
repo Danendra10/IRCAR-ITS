@@ -1244,6 +1244,9 @@ std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, 
     return in_points;
 }
 
+/**
+ * This function is used to ....
+ */
 void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 {
     std::vector<cv::Vec2i> nonzero;
@@ -1252,6 +1255,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     std::vector<int> nonzero_y(nonzero.size());
     std::vector<int> nonzero_x(nonzero.size());
 
+    /**
+     * This for loop is used to ....
+     */
     for (int i = 0; i < nonzero.size(); i++)
     {
         nonzero_x[i] = nonzero[i][0];

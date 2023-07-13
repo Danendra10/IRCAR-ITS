@@ -8,6 +8,7 @@ using namespace cv;
 
 cv::Mat frame_raw;
 cv::Mat frame_gray;
+Mat thresholded;
 cv::Mat output_image = frame_raw.clone();
 
 // aruco variables
