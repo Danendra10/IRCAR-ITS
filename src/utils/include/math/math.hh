@@ -28,4 +28,6 @@ private:
     vector<double> w;
 };
 
+void CalculateTargetToTurnLeft90Degree(CarPose current_car_pose, Pose3D *target_to_turn_left_90_degree);
+
 #endif

@@ -18,6 +18,9 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <vector>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <exception>
 
 #include "entity/entity.hh"
 #include "logger/logger.h"
@@ -30,6 +33,7 @@ using namespace std;
 typedef struct general_data_tag {
     Velocity car_vel;
     CarPose car_pose;
+    Target car_target;
     Target car_target_left;
     Target car_target_right;
     CarData car_data;
@@ -65,6 +69,8 @@ typedef struct general_data_tag {
     uint8_t car_side;
     uint8_t moved_state;
     uint16_t sign_type;
+    uint16_t prev_sign_type;
+    uint16_t lock_state;
     uint8_t signal_stop;
 
     bool can_be_intercepted;
@@ -183,6 +189,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->middle_lane_x_top, msg->middle_lane_y_top, msg->middle_lane_y_bottom, msg->middle_lane_y_bottom));
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->right_lane_x_top, msg->right_lane_y_top, msg->right_lane_y_bottom, msg->right_lane_y_bottom));
     general_instance.can_be_intercepted = msg->can_be_intercepted;
+    data_validator |= 0b001;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr& msg)
@@ -226,13 +233,13 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr& msg)
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr& msg)
 {
     general_instance.sign_type = msg->data;
-    // printf("sign type %d\n", general_instance.sign_type);
+    data_validator |= 0b100;
 }
 
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr& msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
-    data_validator |= 0b100;
+    // printf("signal stop %d\n", general_instance->signal_stop);
 }
 
 //==============================================================================
@@ -247,7 +254,9 @@ void AutoDrive(general_data_ptr data);
 void TurnCarLeft90Degree(general_data_ptr general_data);
 void TurnCarRight90Degree(general_data_ptr general_data);
 void KeepForward(general_data_ptr general_data);
+void TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn);
 void StopRobot(general_data_ptr data);
+void UrbanMovement(general_data_ptr data);
 int8_t kbhit()
 {
     static const int STDIN = 0;

@@ -1,3 +1,12 @@
+/**
+ * Developed By @author
+ * 1. @danendra10 github.com/danendra10
+ * 2. @issabeljt github.com/issabeljt
+ * 3. @hernanda16 github.com/hernanda16
+ *
+ * Auto Drive https://miro.com/app/board/uXjVM2AznZ0=/?share_link_id=411945080257
+ */
+
 #include "master/master.hh"
 
 #define DRIVE
@@ -22,7 +31,7 @@ int main(int argc, char** argv)
     general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
 
-    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 40), CllbckTim60Hz);
+    general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 20), CllbckTim60Hz);
 
     MTS.spin();
     return 0;
@@ -30,10 +39,13 @@ int main(int argc, char** argv)
 
 void CllbckTim60Hz(const ros::TimerEvent& event)
 {
+    if (data_validator < 0b111)
+        return;
     GetKeyboard();
     SimulatorState();
     AutoDrive(&general_instance);
-    DecideCarTarget(&general_instance);
+    TurnCarRight90Degree2(&general_instance, -5, 10);
+    // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
 }
 
@@ -79,7 +91,7 @@ void SimulatorState()
 {
     switch (general_instance.main_state.value) {
     case FORWARD:
-        MoveRobot(5, 0);
+        MoveRobot(2, 0);
         break;
 
     case BACKWARD:
@@ -110,39 +122,57 @@ void SimulatorState()
 
 void AutoDrive(general_data_ptr data)
 {
-    try {
-        // printf("data validator: %d\n", data_validator);
-        if (data_validator < 0b111) {
-
+    try
+    {
+        if (data_validator < 0b111)
+        {
             return;
         }
-        if (data->sign_type == NO_SIGN) {
-            data->main_state.value = AUTONOMOUS_NO_SIGN;
-        } else {
-            if (data->sign_type == SIGN_STOP)
-                data->main_state.value = AUTONOMOUS_STOP_SIGN;
-            if (data->sign_type == SIGN_LEFT)
-                data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
-            if (data->sign_type == SIGN_RIGHT)
-                data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
-            if (data->sign_type == SIGN_FORWARD)
-                data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
-            // if (data->sign_type == SIGN_DEAD_END)
-            //     data->main_state.value = AUTONOMOUS_DEAD_END;
-            // if (data->sign_type == SIGN_NO_ENTRY)
-            //     data->main_state.value = AUTONOMOUS_NO_ENTRY;
-            // if (data->sign_type == SIGN_START_TUNNEL)
-            //     data->main_state.value = AUTONOMOUS_START_TUNNEL;
-            // if (data->sign_type == SIGN_END_TUNNEL)
-            //     data->main_state.value = AUTONOMOUS_END_TUNNEL;
-        }
+        // Define a variable to store the previous sign type
+        static int previous_sign_type = NO_SIGN;
 
-        Logger(BLUE, "AutoDrive: %d", data->main_state.value);
+        if (data->sign_type == NO_SIGN && previous_sign_type == NO_SIGN)
+        {
+            Logger(CYAN, "No Sign Detected");
+            data->main_state.value = AUTONOMOUS_NO_SIGN;
+        }
+        else
+        {
+            // Check if the previous sign type is NO_SIGN
+            if (previous_sign_type == NO_SIGN)
+            {
+                // Lock the current state based on the current sign type
+                if (data->sign_type == SIGN_STOP)
+                {
+                    Logger(CYAN, "Detected a Stop Sign");
+                    data->main_state.value = AUTONOMOUS_STOP_SIGN;
+                }
+                else if (data->sign_type == SIGN_LEFT)
+                {
+                    Logger(CYAN, "Detected a Left Sign");
+                    data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
+                }
+                else if (data->sign_type == SIGN_RIGHT)
+                {
+                    Logger(CYAN, "Detected a Right Sign");
+                    data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+                }
+                else if (data->sign_type == SIGN_FORWARD)
+                {
+                    Logger(CYAN, "Detected a Forward Sign");
+                    data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
+                }
+                // Uncomment and add additional sign types if necessary
+            }
+            printf("Previous and now %d %d\n", previous_sign_type, data->sign_type);
+            // Update the previous sign type with the current sign type
+            previous_sign_type = data->sign_type;
+        }
 
 #ifdef DRIVE
         switch (data->main_state.value) {
         case AUTONOMOUS_NO_SIGN:
-            RobotMovement(data);
+            // RobotMovement(data);
             break;
         case AUTONOMOUS_STOP_SIGN:
             StopRobot(data);
@@ -163,6 +193,10 @@ void AutoDrive(general_data_ptr data)
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
+    }
+    catch (...)
+    {
+        std::cout << "Error cought in line: " << __LINE__ << std::endl;
     }
 }
 
@@ -208,31 +242,70 @@ void TurnCarLeft90Degree(general_data_ptr general_data)
 void TurnCarRight90Degree(general_data_ptr general_data)
 {
     // Stop the car
-    general_data->car_vel.x = 0;
-    general_data->car_vel.th = 0;
+    // and duration of stop is more than 1 second
+    // declare the stop time
+    static double time_1 = ros::Time::now().toSec();
+    double current_time = ros::Time::now().toSec();
+    // double delta_time = current_time - stop_time;
+    // printf("delta time: %f\n", delta_time);
+    // if (general_data->signal_stop == 1 && delta_time < 1.0)
+    // {
+    //     general_data->car_vel.x = 0;
+    //     general_data->car_vel.th = 0;
 
-    /**
-     * Wait for a certain period of time to ensure the car has stopped,
-     * don't make it turn while it's still moving, it will mess up the turn
-     */
-    ros::Duration(0.5).sleep();
+    //     /**
+    //      * Wait for a certain period of time to ensure the car has stopped,
+    //      * don't make it turn while it's still moving, it will mess up the turn
+    //      */
+    //     ros::Duration(0.5).sleep();
+    //     return;
+    // }
 
     /**
      * Turn the car right by 90 degrees
      * The desired heading is the current heading - 90 degrees
      */
-    float desired_heading = general_data->car_pose.th - (M_PI / 2.0); // Subtract 90 degrees (pi/2) from the current heading
+    float desired_heading = general_data->car_pose.th + RAD2DEG(M_PI / 2.0); // Subtract 90 degrees (pi/2) from the current heading
 
-    if (desired_heading > M_PI)
-        desired_heading -= (2 * M_PI);
-    else if (desired_heading < -M_PI)
-        desired_heading += (2 * M_PI);
+    // desired heading is in degree
+    if (desired_heading > 180)
+        desired_heading -= 360;
+    else if (desired_heading < -180)
+        desired_heading += 360;
 
-    general_data->car_target_left.x = general_data->car_pose.x;
-    general_data->car_target_left.y = general_data->car_pose.y;
-    general_data->car_target_left.th = desired_heading;
+    desired_heading = DEG2RAD(desired_heading);
 
-    RobotMovement(general_data);
+    general_data->car_vel.x = 1;
+    general_data->car_vel.th = -0.5;
+
+    // general_data->car_target_left.x = general_data->car_pose.x + 0.5 * cos(desired_heading);
+    // general_data->car_target_left.y = general_data->car_pose.y + 0.5 * sin(desired_heading);
+    // general_data->car_target_left.th = desired_heading;
+
+    // general_data->car_target_left.x = general_data->car_pose.x;
+    // general_data->car_target_left.y = general_data->car_pose.y;
+    // general_data->car_target_left.th = desired_heading;
+
+    float time_to_turn = 3.0;
+
+    // UrbanMovement(general_data);
+}
+
+void SetRobotSteering(general_data_ptr general_data, float steering)
+{
+    general_data->car_vel.x = 1;
+    general_data->car_vel.th = steering;
+}
+
+void TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn)
+{
+    static double time_1 = ros::Time::now().toSec();
+    double current_time = ros::Time::now().toSec();
+    if (current_time - time_1 < time_to_turn)
+    {
+        printf("time: %f\n", current_time - time_1);
+        SetRobotSteering(general_data, steering);
+    }
 }
 
 void KeepForward(general_data_ptr general_data)
@@ -303,7 +376,7 @@ void DecideCarTarget(general_data_ptr general_data)
         float car_to_right = sqrt(pow(pixel_to_real(700 - general_data->right_lane[right_lane_size - 1].y), 2) + pow(pixel_to_real(general_data->right_lane[right_lane_size - 1].x - 400), 2));
         int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
 
-        // printf("from left %f || from right %f\n", car_to_left, car_to_right);
+        printf("from left %f || from right %f\n", car_to_left, car_to_right);
 
         if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
             lane_buffer_x = general_data->middle_lane[middle_lane_size - 1].x;
@@ -320,6 +393,7 @@ void DecideCarTarget(general_data_ptr general_data)
         //     general_data->car_side = 10;
         // else if ((car_to_left - car_to_right > 3 && general_data->obs_status == 0) || general_data->obs_status == 2)
         //     general_data->car_side = 20;
+
         if (general_data->obs_status == 0)
             general_data->car_side = 0;
         else if (general_data->obs_status == 1)
@@ -356,9 +430,30 @@ void DecideCarTarget(general_data_ptr general_data)
             return;
         if (general_data->middle_lane[middle_lane_size - 1].x == 0)
             return;
-    } catch (std::exception& e) {
-        std::cout << "Error cought on Line: " << __LINE__ << std::endl;
+        throw std::runtime_error("An error occurred!"); // Example error
     }
+    catch (const std::exception &e)
+    {
+        std::cout << "Error occurred on line: " << __LINE__ << std::endl;
+        std::cout << "Error message: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        ROS_ERROR_STREAM("Error caught on line: " << __LINE__);
+    }
+}
+
+void UrbanMovement(general_data_ptr data)
+{
+    float ld = 10;
+    float target_x = data->car_target.x;
+    float target_y = data->car_target.y;
+    float target_th = data->car_target.th;
+
+    float dist_x = target_x + ld * cos(target_th);
+    float dist_y = target_y + ld * sin(target_th);
+
+    printf("target %f %f %f dist %f %f\n", target_x, target_y, target_th, dist_x, dist_y);
 }
 
 void RobotMovement(general_data_ptr data)
@@ -413,10 +508,11 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
-    if (general_instance.signal_stop) {
-        vel_msg.angular.z = 0;
-        vel_msg.linear.x = 0;
-    }
+    // if (general_instance.signal_stop)
+    // {
+    //     vel_msg.angular.z = 0;
+    //     vel_msg.linear.x = 0;
+    // }
     data->pub_car_vel.publish(vel_msg);
 
     //============
