@@ -41,6 +41,14 @@ cv::aruco::DetectorParameters detector_params;
 cv::Ptr<cv::aruco::DetectorParameters> detector_params_ptr;
 cv::Ptr<cv::aruco::Dictionary> dictionary;
 
+//---Conf Params
+int thresh_road_sign = 190;
+int max_val = 255;
+uint8_t threshold_counter_road_sign;
+int distance_to_road_sign_threshold;
+int x_pos_road_sign_threshold;
+int y_pos_road_sign_threshold;
+
 //====================================================================================================
 
 boost::mutex mutex_raw_frame;
@@ -50,10 +58,6 @@ boost::mutex mutex_raw_frame;
 int validator;
 int counter = 0;
 float distance_to_detected_sign;
-uint8_t threshold_counter_road_sign;
-int distance_to_road_sign_threshold;
-int x_pos_road_sign_threshold;
-int y_pos_road_sign_threshold;
 uint8_t stop_signal;
 int center_cam_x = 400;
 int center_cam_y = 800;

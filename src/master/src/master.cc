@@ -44,7 +44,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
     //     return;
     GetKeyboard();
     SimulatorState();
-    // AutoDrive(&general_instance);
+    AutoDrive(&general_instance);
     // TurnCarRight90Degree2(&general_instance, -5, 10);
     // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
@@ -133,20 +133,25 @@ void AutoDrive(general_data_ptr data)
 
         static bool is_unlocked = true; // Initialize the locked state variable
 
+        if (data->prev_sign_type != NO_SIGN && data->sign_type == NO_SIGN)
+            is_unlocked = true;
+        else
+            is_unlocked = false;
+
         switch (data->sign_type)
         {
         case NO_SIGN:
             if (is_unlocked)
             {
-                Logger(RED, "No Sign Detected");
+                // Logger(RED, "No Sign Detected");
                 // DecideCarTarget(data);
             }
             break;
         case SIGN_RIGHT:
             if (is_unlocked)
                 is_unlocked = false;
-            Logger(RED, "Entered State Sign Right");
-            if (TurnCarRight90Degree2(data, 0.5, 10))
+            // Logger(RED, "Entered State Sign Right");
+            if (TurnCarRight90Degree2(data, 0.5, 10) && !is_unlocked)
             {
                 Logger(RED, "Detected a Right Sign");
                 is_unlocked = true;
@@ -154,6 +159,10 @@ void AutoDrive(general_data_ptr data)
             }
             break;
         }
+
+        data->prev_sign_type = data->sign_type;
+
+        Logger(CYAN, "Detected a sign %d", data->sign_type);
 
         // if (data->sign_type == NO_SIGN && previous_sign_type == NO_SIGN)
         // {
@@ -354,7 +363,7 @@ bool TurnCarRight90Degree2(general_data_ptr general_data, float steering, float 
         if (current_time - time_1 < time_to_turn)
         {
             printf("time: %f\n", current_time - time_1);
-            SetRobotSteering(general_data, steering);
+            // SetRobotSteering(general_data, steering);
         }
         else
         {

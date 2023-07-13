@@ -1,4 +1,6 @@
 threshold_counter_road_sign: 20
 distance_to_road_sign_threshold: 500
-x_pos_road_sign_threshold: 650
+x_pos_road_sign_threshold: 550
 y_pos_road_sign_threshold: 270
+thresh_road_sign: 195
+max_val: 255

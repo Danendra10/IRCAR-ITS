@@ -1,5 +1,8 @@
 #include "sign_detector/aruco.hpp"
 
+#define SHOW_FRAME
+// #define SHOW_SLIDER
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "road_sign_detector");
@@ -42,6 +45,13 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 {
     if (validator != 0b001)
         return;
+
+    if (frame_raw.empty())
+    {
+        ROS_ERROR("frame_raw is empty");
+        return;
+    }
+
     output_image = frame_raw.clone();
 
     //---Preprocessing
@@ -51,7 +61,9 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
      * if you came up with better method, please make a pull request and i'll review it.
      */
     cvtColor(frame_raw, frame_gray, CV_BGR2GRAY);
-    threshold(frame_gray, thresholded, 160, 255, THRESH_BINARY);
+    threshold(frame_gray, thresholded, thresh_road_sign, max_val, THRESH_BINARY);
+    // adaptiveThreshold(frame_gray, thresholded, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 2);
+
     erode(thresholded, thresholded, Mat(), Point(-1, -1), 2);
     dilate(thresholded, thresholded, Mat(), Point(-1, -1), 2);
 
@@ -100,18 +112,26 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 
     if (counter < threshold_counter_road_sign)
     {
+        // Get the id of the closest marker
         int id = marker_ids[prev_min_index];
-        Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
-        float c_x = (marker_corners[prev_min_index][0].x + marker_corners[prev_min_index][1].x + marker_corners[prev_min_index][2].x + marker_corners[prev_min_index][3].x) / 4;
-        float c_y = (marker_corners[prev_min_index][0].y + marker_corners[prev_min_index][1].y + marker_corners[prev_min_index][2].y + marker_corners[prev_min_index][3].y) / 4;
-        distance_to_detected_sign = sqrt(pow(center.x - center_cam_x, 2) + pow(center.y - center_cam_y, 2));
 
+        // Get the center of the marker in px
+        Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
+
+        // For debug purpose
         putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+
         std_msgs::UInt16 msg;
-        // printf("Distance to detected sign %f || state %d\n", distance_to_detected_sign, distance_to_detected_sign < distance_to_road_sign_threshold);
+        /**
+         * @brief This is a threshold to determine whether the marker is on the close spot
+         * why i did not use the distance from the camera to the marker?
+         * because the distance from the camera to the marker is not linear, so i use the position of the marker
+         * you could find the threshold in static_conf.yaml if it match the condition it would publish the Id
+         * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
+         */
+        // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
         if (center.x > x_pos_road_sign_threshold && center.y < y_pos_road_sign_threshold)
         {
-            printf("Turn To %s\n", commands[id].c_str());
             msg.data = id;
         }
         else
@@ -120,14 +140,16 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     }
     else
     {
-        distance_to_detected_sign = 0;
         std_msgs::UInt16 msg;
         msg.data = 8;
         pub_detected_sign_data.publish(msg);
     }
+
+#ifdef SHOW_FRAME
     imshow("thresholded", thresholded);
     imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);
+#endif
 
     std_msgs::UInt8 msg_signal;
     msg_signal.data = stop_signal;
@@ -142,6 +164,11 @@ int ArucoInit()
     detector_params = aruco::DetectorParameters();
     detector_params_ptr = makePtr<aruco::DetectorParameters>(detector_params);
     dictionary = aruco::getPredefinedDictionary(aruco::DICT_APRILTAG_36h11);
+#ifdef SHOW_SLIDER
+    namedWindow("road_sign_thresholding", WINDOW_AUTOSIZE);
+    createTrackbar("thresh", "road_sign_thresholding", &thresh_road_sign, 255);
+    createTrackbar("max_val", "road_sign_thresholding", &max_val, 255);
+#endif
     return 0;
 }
 
@@ -160,6 +187,8 @@ void LoadConfig()
         distance_to_road_sign_threshold = config["distance_to_road_sign_threshold"].as<int>();
         x_pos_road_sign_threshold = config["x_pos_road_sign_threshold"].as<int>();
         y_pos_road_sign_threshold = config["y_pos_road_sign_threshold"].as<int>();
+        // thresh_road_sign = config["thresh_road_sign"].as<int>();
+        // max_val = config["max_val"].as<int>();
     }
     catch (YAML::BadFile &e)
     {
