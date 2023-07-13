@@ -107,7 +107,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     {
         general_instance.obs_status = 0;
 
-        data_validator |= 0b010;
+        // data_validator |= 0b010;
         return;
     }
 
@@ -117,7 +117,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
         general_instance.raw_obs_data.push_back(raw_obs);
-        float dst = sqrt(pow(raw_obs.x, 2) + pow(raw_obs.y, 2));
+        // float dst = sqrt(pow(raw_obs.x, 2) + pow(raw_obs.y, 2));
         // if (i % 5 == 0)
         //     printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y, dst);
 
@@ -125,15 +125,15 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         obs.x = msg->x[i] + general_instance.car_pose.x;
         obs.y = msg->y[i] + general_instance.car_pose.y;
         general_instance.obs_data.push_back(obs);
-        if (obs.y > 0)
-            general_instance.obs_status = 1;
-        else
-            general_instance.obs_status = 2;
+        // if (raw_obs.y > 0)
+        general_instance.obs_status = 1;
+        // else
+        //     general_instance.obs_status = 2;
     }
 
-    printf("obs status %d\n", general_instance.obs_status);
+    // printf("obs status %d\n", general_instance.obs_status);
 
-    data_validator |= 0b010;
+    data_validator |= 0b0100;
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -158,9 +158,9 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 
 void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 {
-    // general_instance.left_lane_real.clear();
-    // general_instance.middle_lane_real.clear();
-    // general_instance.right_lane_real.clear();
+    general_instance.left_lane_real.clear();
+    general_instance.middle_lane_real.clear();
+    general_instance.right_lane_real.clear();
 
     // for (int i = 0; i < msg->left_lane_x_real.size(); i++)
     // {
@@ -187,16 +187,45 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     //     real_lane.y = (general_instance.right_lane_real[i].y + general_instance.left_lane_real[i].y) / 2;
     //     general_instance.middle_lane_real.push_back(real_lane);
     // }
-    // printf("target x %f y %f\n", msg->target_x,msg->target_y);
     general_instance.car_target_left.x = msg->target_x_left;
     general_instance.car_target_left.y = msg->target_y_left;
-    general_instance.car_target_right.x = msg->target_x_right;
-    general_instance.car_target_right.y = msg->target_y_right;
+    // general_instance.car_target_right.x = msg->target_x_right;
+    // general_instance.car_target_right.y = msg->target_y_right;
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->left_lane_x_top, msg->left_lane_y_top, msg->left_lane_y_bottom, msg->left_lane_y_bottom));
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->middle_lane_x_top, msg->middle_lane_y_top, msg->middle_lane_y_bottom, msg->middle_lane_y_bottom));
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->right_lane_x_top, msg->right_lane_y_top, msg->right_lane_y_bottom, msg->right_lane_y_bottom));
-    general_instance.can_be_intercepted = msg->can_be_intercepted;
-    data_validator |= 0b001;
+    // general_instance.can_be_intercepted = msg->can_be_intercepted;
+    if (msg->can_be_intercepted == true)
+    {
+        float dist_x_left = 800 - msg->left_lane_y_top;
+        float dist_y_left = msg->left_lane_x_top - 400;
+        float dist_x_right = 800 - msg->right_lane_y_top;
+        float dist_y_right = msg->right_lane_x_top - 400;
+        float dist_x_middle = 800 - msg->middle_lane_y_top;
+        float dist_y_middle = msg->middle_lane_x_top - 400;
+
+        float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
+        float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
+        float distance_middle = pixel_to_real(sqrt(pow(dist_x_middle, 2) + pow(dist_y_middle, 2)));
+        float angle_diff_left = atan(dist_x_left / dist_y_left);
+        float angle_diff_right = atan(dist_x_right / dist_y_right);
+        float angle_diff_middle = atan(dist_x_middle / dist_y_middle);
+
+        if (dist_y_left < 0)
+            angle_diff_left += DEG2RAD(180);
+        if (dist_y_right < 0)
+            angle_diff_right += DEG2RAD(180);
+        if (dist_y_middle < 0)
+            angle_diff_middle += DEG2RAD(180);
+
+        general_instance.car_target_left.x = (distance_left * sin(angle_diff_left) + distance_middle * sin(angle_diff_middle)) / 2;
+        general_instance.car_target_left.y = (distance_left * cos(angle_diff_left) + distance_middle * cos(angle_diff_middle)) / 2;
+        general_instance.car_target_right.x = (distance_right * sin(angle_diff_right) + distance_middle * sin(angle_diff_middle)) / 2;
+        general_instance.car_target_right.y = (distance_right * cos(angle_diff_right) + distance_middle * cos(angle_diff_middle)) / 2;
+        general_instance.car_target.x = distance_middle * sin(angle_diff_middle);
+        general_instance.car_target.y = distance_middle * cos(angle_diff_middle);
+    }
+    data_validator |= 0b0010;
 }
 
 void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
@@ -238,13 +267,13 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
         general_instance.path_lane.push_back(real_lane);
         // printf("x %f y %f\n", general_instance.path_lane[i].x, general_instance.path_lane[i].y);
     }
-    data_validator |= 0b001;
+    data_validator |= 0b0001;
 }
 
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
-    data_validator |= 0b100;
+    data_validator |= 0b1000;
 }
 
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)

@@ -861,7 +861,7 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         lane.target_x_right = distance_right * sin(angle_diff_right);
         lane.target_y_right = distance_right * cos(angle_diff_right);
 
-        // printf("bef %f %f || nnnn %f %f\n", dist_x, dist_y, lane.target_x, lane.target_y);
+        // printf("bef %f %f || nnnn %f %f ||diff %f\n", dist_x_right, dist_y_right, lane.target_x_right, lane.target_y_right, RAD2DEG(angle_diff_right));
 
         pub_target.publish(lane);
     }
@@ -870,7 +870,7 @@ void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines)
         ROS_WARN("KIRI HILANG");
 
         prev_state = LeftLost;
-        // decision = RightLane;
+        decision = RightLane;
 
         if (right_fit_avg[0] <= 1)
         {
