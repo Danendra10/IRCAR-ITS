@@ -85,7 +85,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         msg.data = id;
         pub_detected_sign_data.publish(msg);
     }
-    else if (min_index == -1 && counter > threshold_counter_road_sign)
+    else
     {
         distance_to_detected_sign = 0;
         std_msgs::UInt16 msg;

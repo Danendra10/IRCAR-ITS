@@ -30,7 +30,8 @@
 
 using namespace std;
 
-typedef struct general_data_tag {
+typedef struct general_data_tag
+{
     Velocity car_vel;
     CarPose car_pose;
     Target car_target;
@@ -91,23 +92,27 @@ uint8_t data_validator = 0b000;
 
 //==============================================================================
 
-const string commands[] = { "stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop" };
+const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
 
 //==============================================================================
 
-void CllbckTim60Hz(const ros::TimerEvent& event);
+void CllbckTim60Hz(const ros::TimerEvent &event);
 
-void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr& msg)
+void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 {
     general_instance.raw_obs_data.clear();
     general_instance.obs_data.clear();
 
-    if (msg->x.size() == 0) {
+    if (msg->x.size() == 0)
+    {
         general_instance.obs_status = 0;
+
+        data_validator |= 0b010;
         return;
     }
 
-    for (int i = 0; i < msg->x.size(); i++) {
+    for (int i = 0; i < msg->x.size(); i++)
+    {
         Obstacles raw_obs;
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
@@ -126,10 +131,12 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr& msg)
             general_instance.obs_status = 2;
     }
 
+    printf("obs status %d\n", general_instance.obs_status);
+
     data_validator |= 0b010;
 }
 
-void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr& msg, general_data_ptr general_instance)
+void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
 {
     // posisi sumbu x
     general_instance->car_data.rear_left_wheel_joint = msg->position[0];
@@ -142,14 +149,14 @@ void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr& msg, general_data
     // general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
 }
 
-void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr& msg)
+void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 {
     general_instance.car_pose.x = msg->x;
     general_instance.car_pose.y = msg->y;
     general_instance.car_pose.th = msg->z;
 }
 
-void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
+void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 {
     // general_instance.left_lane_real.clear();
     // general_instance.middle_lane_real.clear();
@@ -192,35 +199,39 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     data_validator |= 0b001;
 }
 
-void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr& msg)
+void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr &msg)
 {
     general_instance.left_lane.clear();
     general_instance.middle_lane.clear();
     general_instance.right_lane.clear();
     general_instance.path_lane.clear();
 
-    for (int i = 0; i < msg->left_lane_x.size(); i++) {
+    for (int i = 0; i < msg->left_lane_x.size(); i++)
+    {
         Lane lane;
         lane.x = msg->left_lane_x[i];
         lane.y = msg->left_lane_y[i];
         general_instance.left_lane.push_back(lane);
     }
 
-    for (int i = 0; i < msg->middle_lane_x.size(); i++) {
+    for (int i = 0; i < msg->middle_lane_x.size(); i++)
+    {
         Lane lane;
         lane.x = msg->middle_lane_x[i];
         lane.y = msg->middle_lane_y[i];
         general_instance.middle_lane.push_back(lane);
     }
 
-    for (int i = 0; i < msg->right_lane_x.size(); i++) {
+    for (int i = 0; i < msg->right_lane_x.size(); i++)
+    {
         Lane lane;
         lane.x = msg->right_lane_x[i];
         lane.y = msg->right_lane_y[i];
         general_instance.right_lane.push_back(lane);
     }
 
-    for (int i = 0; i < msg->path_lane_x.size(); i++) {
+    for (int i = 0; i < msg->path_lane_x.size(); i++)
+    {
         Lane real_lane;
         real_lane.x = pixel_to_real(700 - msg->path_lane_y[i]);
         real_lane.y = pixel_to_real(msg->path_lane_x[i] - 400);
@@ -230,13 +241,13 @@ void CllbckSubLaneVector(const msg_collection::PointArray::ConstPtr& msg)
     data_validator |= 0b001;
 }
 
-void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr& msg)
+void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
     data_validator |= 0b100;
 }
 
-void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr& msg, general_data_ptr general_instance)
+void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
     // printf("signal stop %d\n", general_instance->signal_stop);
@@ -254,15 +265,17 @@ void AutoDrive(general_data_ptr data);
 void TurnCarLeft90Degree(general_data_ptr general_data);
 void TurnCarRight90Degree(general_data_ptr general_data);
 void KeepForward(general_data_ptr general_data);
-void TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn);
+bool TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn);
 void StopRobot(general_data_ptr data);
+bool StopRobot(general_data_ptr data, float time_to_stop);
 void UrbanMovement(general_data_ptr data);
 int8_t kbhit()
 {
     static const int STDIN = 0;
     static bool initialized = false;
 
-    if (!initialized) {
+    if (!initialized)
+    {
         termios term;
         tcgetattr(STDIN, &term);
         term.c_lflag &= ~ICANON;
