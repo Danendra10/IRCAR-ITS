@@ -134,43 +134,55 @@ void AutoDrive(general_data_ptr data)
         // Define a variable to store the previous sign type
         static int previous_sign_type = NO_SIGN;
 
-        if (data->sign_type == NO_SIGN && previous_sign_type == NO_SIGN)
+        switch (data->sign_type)
         {
+        case NO_SIGN:
             Logger(CYAN, "No Sign Detected");
             data->main_state.value = AUTONOMOUS_NO_SIGN;
+            break;
+        case SIGN_RIGHT:
+            Logger(CYAN, "Detected a Right Sign");
+            data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+            break;
         }
-        else
-        {
-            // Check if the previous sign type is NO_SIGN
-            if (previous_sign_type == NO_SIGN)
-            {
-                // Lock the current state based on the current sign type
-                if (data->sign_type == SIGN_STOP)
-                {
-                    Logger(CYAN, "Detected a Stop Sign");
-                    data->main_state.value = AUTONOMOUS_STOP_SIGN;
-                }
-                else if (data->sign_type == SIGN_LEFT)
-                {
-                    Logger(CYAN, "Detected a Left Sign");
-                    data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
-                }
-                else if (data->sign_type == SIGN_RIGHT)
-                {
-                    Logger(CYAN, "Detected a Right Sign");
-                    data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
-                }
-                else if (data->sign_type == SIGN_FORWARD)
-                {
-                    Logger(CYAN, "Detected a Forward Sign");
-                    data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
-                }
-                // Uncomment and add additional sign types if necessary
-            }
-            printf("Previous and now %d %d\n", previous_sign_type, data->sign_type);
-            // Update the previous sign type with the current sign type
-            previous_sign_type = data->sign_type;
-        }
+
+        // if (data->sign_type == NO_SIGN && previous_sign_type == NO_SIGN)
+        // {
+        //     Logger(CYAN, "No Sign Detected");
+        //     data->main_state.value = AUTONOMOUS_NO_SIGN;
+        // }
+        // else
+        // {
+        //     // Check if the previous sign type is NO_SIGN
+        //     if (previous_sign_type == NO_SIGN)
+        //     {
+        //         // Lock the current state based on the current sign type
+        //         if (data->sign_type == SIGN_STOP)
+        //         {
+        //             Logger(CYAN, "Detected a Stop Sign");
+        //             data->main_state.value = AUTONOMOUS_STOP_SIGN;
+        //         }
+        //         else if (data->sign_type == SIGN_LEFT)
+        //         {
+        //             Logger(CYAN, "Detected a Left Sign");
+        //             data->main_state.value = AUTONOMOUS_TURN_LEFT_90;
+        //         }
+        //         else if (data->sign_type == SIGN_RIGHT)
+        //         {
+        //             Logger(CYAN, "Detected a Right Sign");
+        //             data->main_state.value = AUTONOMOUS_TURN_RIGHT_90;
+        //         }
+        //         else if (data->sign_type == SIGN_FORWARD)
+        //         {
+        //             Logger(CYAN, "Detected a Forward Sign");
+        //             data->main_state.value = AUTONOMOUS_KEEP_FORWARD;
+        //         }
+        //         // Uncomment and add additional sign types if necessary
+        //     }
+        //     printf("Previous and now %d %d\n", previous_sign_type, data->sign_type);
+        //     // Update the previous sign type with the current sign type
+        //     previous_sign_type = data->sign_type;
+        // }
 
 #ifdef DRIVE
         switch (data->main_state.value)
@@ -185,7 +197,11 @@ void AutoDrive(general_data_ptr data)
             TurnCarLeft90Degree(data);
             break;
         case AUTONOMOUS_TURN_RIGHT_90:
-            TurnCarRight90Degree(data);
+            if (TurnCarRight90Degree2(data, -2, 10))
+            {
+                Logger(GREEN, "Turned Right 90 Degree");
+                data->sign_type = NO_SIGN;
+            }
             break;
         case AUTONOMOUS_KEEP_FORWARD:
             KeepForward(data);
