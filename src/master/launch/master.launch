@@ -1,6 +1,6 @@
 <launch>
-    <node name="vision_cpp" pkg="vision" type="vision_cpp" output="screen" respawn="true" />
     <node name="road_sign_detector" pkg="vision" type="road_sign_detector" output="screen" respawn="true" />
+    <node name="vision_cpp" pkg="vision" type="vision_cpp" output="screen" respawn="true" />
     <node name="lidar" pkg="vision" type="lidar" output="screen" respawn="true" />
-    <!-- <node name="master" pkg="master" type="master" output="screen" respawn="true" /> -->
+    <node name="master" pkg="master" type="master" output="screen" respawn="true" />
 </launch>
