@@ -11,6 +11,8 @@ add_message_files(
     PointArray.msg
     Obstacles.msg
     RealPosition.msg
+    CmdVision.msg
+    SlopeIntercept.msg
 )
 
 

@@ -7,9 +7,11 @@
 #include "imp/imph.hh"
 #include "logger/logger.h"
 #include "math/math.hh"
+#include "msg_collection/CmdVision.h"
 #include "msg_collection/Obstacles.h"
 #include "msg_collection/PointArray.h"
 #include "msg_collection/RealPosition.h"
+#include "msg_collection/SlopeIntercept.h"
 #include "nav_msgs/Odometry.h"
 #include "pinhole/pinhole.hh"
 #include "sensor_msgs/Image.h"
@@ -38,6 +40,7 @@ using namespace cv;
 image_transport::Subscriber sub_raw_frame;
 
 ros::Subscriber sub_odom;
+ros::Subscriber sub_cmd_vision;
 ros::Subscriber sub_lidar_data;
 
 ros::Publisher pub_car_pose;
@@ -87,7 +90,14 @@ int road_target = 1;
 int prev_x_target = 6969;
 int prev_spike = 3;
 int x_target, y_target;
-bool checker = true;
+bool problem;
+bool must3Lines = true;
+bool find3Lines;
+bool canbeIntercept = true;
+double line_SI[3][2];
+int prev_left[2];
+int prev_middle[2];
+int prev_right[2];
 
 PolynomialRegression polynom(DEGREE);
 
@@ -96,6 +106,7 @@ PolynomialRegression polynom(DEGREE);
 void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr& msg);
 void SubOdomRaw(const nav_msgs::Odometry::ConstPtr& msg);
 void SubLidarData(const msg_collection::Obstacles::ConstPtr& msg);
+void SubCmdVision(const msg_collection::CmdVision::ConstPtr& msg);
 
 //============================================================
 
@@ -123,7 +134,7 @@ std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i>& leftLines, 
 cv::Vec4i ExtrapolateLine(const cv::Vec4i& line, int minY, int maxY);
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat& frame, bool road_part);
+void ROI(cv::Mat& frame, cv::Mat& frame_faraway);
 void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line);
 void Display(cv::Mat& frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
 void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines);

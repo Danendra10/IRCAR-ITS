@@ -2,13 +2,14 @@
 
 #define DRIVE
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     ros::init(argc, argv, "master");
     ros::NodeHandle NH;
     ros::MultiThreadedSpinner MTS;
 
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
+    general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
@@ -27,7 +28,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void CllbckTim60Hz(const ros::TimerEvent &event)
+void CllbckTim60Hz(const ros::TimerEvent& event)
 {
     GetKeyboard();
     SimulatorState();
@@ -39,12 +40,10 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 void GetKeyboard()
 {
     static uint8_t prev_key = 0;
-    if (kbhit() > 0)
-    {
+    if (kbhit() > 0) {
         char key = std::cin.get();
 
-        switch (key)
-        {
+        switch (key) {
         case 'w':
             general_instance.main_state.value = FORWARD;
             break;
@@ -78,8 +77,7 @@ void MoveRobot(float vx_, float vz_)
 
 void SimulatorState()
 {
-    switch (general_instance.main_state.value)
-    {
+    switch (general_instance.main_state.value) {
     case FORWARD:
         MoveRobot(5, 0);
         break;
@@ -112,20 +110,15 @@ void SimulatorState()
 
 void AutoDrive(general_data_ptr data)
 {
-    try
-    {
-        printf("data validator: %d\n", data_validator);
-        if (data_validator < 0b111)
-        {
+    try {
+        // printf("data validator: %d\n", data_validator);
+        if (data_validator < 0b111) {
 
             return;
         }
-        if (data->sign_type == NO_SIGN)
-        {
+        if (data->sign_type == NO_SIGN) {
             data->main_state.value = AUTONOMOUS_NO_SIGN;
-        }
-        else
-        {
+        } else {
             if (data->sign_type == SIGN_STOP)
                 data->main_state.value = AUTONOMOUS_STOP_SIGN;
             if (data->sign_type == SIGN_LEFT)
@@ -147,8 +140,7 @@ void AutoDrive(general_data_ptr data)
         Logger(BLUE, "AutoDrive: %d", data->main_state.value);
 
 #ifdef DRIVE
-        switch (data->main_state.value)
-        {
+        switch (data->main_state.value) {
         case AUTONOMOUS_NO_SIGN:
             RobotMovement(data);
             break;
@@ -169,9 +161,7 @@ void AutoDrive(general_data_ptr data)
             break;
         }
 #endif
-    }
-    catch (const std::exception &e)
-    {
+    } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
     }
 }
@@ -269,8 +259,7 @@ void KeepForward(general_data_ptr general_data)
 
     int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
 
-    if (size_of_middle_lane_close_to_robot == -1)
-    {
+    if (size_of_middle_lane_close_to_robot == -1) {
         // keep forward
         general_data->car_target_left.x = general_data->car_pose.x + 0.5;
         general_data->car_target_left.y = general_data->car_pose.y;
@@ -278,24 +267,18 @@ void KeepForward(general_data_ptr general_data)
     }
 
     // Check if the robot's angle is linear with the angle of the lane
-    if (middle_lane_size > 400 && abs(dist_between_points) < 20)
-    {
+    if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
         // The robot's angle is linear with the angle of the lane, keep moving forward
         general_data->car_target_left.x = general_data->car_pose.x;
         general_data->car_target_left.y = general_data->car_pose.y;
         general_data->car_target_left.th = general_data->car_pose.th;
-    }
-    else
-    {
+    } else {
         // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
-        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
-        {
+        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0)) {
             general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
             general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
             general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
-        }
-        else
-        {
+        } else {
             // The robot's angle is not linear and no specific side is determined, keep moving forward
             general_data->car_target_left.x = general_data->car_pose.x;
             general_data->car_target_left.y = general_data->car_pose.y;
@@ -309,8 +292,7 @@ void KeepForward(general_data_ptr general_data)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
-    try
-    {
+    try {
         if (data_validator < 0b111)
             return;
         int lane_buffer_x, lane_buffer_y;
@@ -323,13 +305,10 @@ void DecideCarTarget(general_data_ptr general_data)
 
         // printf("from left %f || from right %f\n", car_to_left, car_to_right);
 
-        if (middle_lane_size > 400 && abs(dist_between_points) < 20)
-        {
+        if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
             lane_buffer_x = general_data->middle_lane[middle_lane_size - 1].x;
             lane_buffer_y = general_data->middle_lane[middle_lane_size - 1].y;
-        }
-        else
-        {
+        } else {
             general_data->middle_lane[middle_lane_size - 1].x = lane_buffer_x;
             general_data->middle_lane[middle_lane_size - 1].y = lane_buffer_y;
         }
@@ -377,9 +356,7 @@ void DecideCarTarget(general_data_ptr general_data)
             return;
         if (general_data->middle_lane[middle_lane_size - 1].x == 0)
             return;
-    }
-    catch (std::exception &e)
-    {
+    } catch (std::exception& e) {
         std::cout << "Error cought on Line: " << __LINE__ << std::endl;
     }
 }
@@ -413,20 +390,19 @@ void RobotMovement(general_data_ptr data)
 
     float delta = atan(2 * l * sin(alpha) / ld);
     // printf("delta %f\n", delta);
-    if (abs(delta) < 0.05)
-    {
+    if (abs(delta) < 0.05) {
         data->car_vel.th = 0;
-        data->car_vel.x = 12;
+        data->car_vel.x = 5.8;
     }
 
     else {
-        data->car_vel.x = 12;
+        data->car_vel.x = 5.8;
         if (data->car_target_left.y < 0)
-            data->car_vel.th = RAD2DEG(delta) / 24;
+            data->car_vel.th = RAD2DEG(delta) / 16;
         // data->car_vel.th = RAD2DEG(delta) / (data->car_vel.x / 0.1);
         else
             // data->car_vel.th = -1 * RAD2DEG(delta) / (data->car_vel.x / 0.1);
-            data->car_vel.th = -1 * RAD2DEG(delta) / 24;
+            data->car_vel.th = -1 * RAD2DEG(delta) / 16;
     }
     // printf("v th %f\n", data->car_vel.th);
     // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);
@@ -437,10 +413,17 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     vel_msg.angular.z = data->car_vel.th;
     vel_msg.linear.x = data->car_vel.x;
-    if (general_instance.signal_stop)
-    {
+    if (general_instance.signal_stop) {
         vel_msg.angular.z = 0;
         vel_msg.linear.x = 0;
     }
     data->pub_car_vel.publish(vel_msg);
+
+    //============
+    //command sent choose whether vision running standalone or being ordered master
+    //some urgency make it happens. ex : there's obstacle but only got 2 lines of data making error in lane decision
+    //============
+    msg_collection::CmdVision cmd;
+    cmd.find_3_lanes = false;
+    data->pub_cmd_vision.publish(cmd);
 }

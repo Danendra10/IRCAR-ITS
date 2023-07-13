@@ -23,18 +23,22 @@ unsigned int DivideBy4(unsigned int in)
 
 float pixel_to_real(float pix)
 {
-    int max_orde = 5;
-    // double orde[] = {1.6025170549750258e+000, -8.0261626712776948e-003, 1.9085792942752757e-004, -5.1360872046995370e-007, 6.6860526863516786e-010, -2.8823572300900999e-013};
+    int max_orde = 6;
+    double orde[] = { 1.6025170549750258e+000,
+        -8.0261626712776948e-003,
+        1.9085792942752757e-004,
+        -5.1360872046995370e-007,
+        6.6860526863516786e-010,
+        -2.8823572300900999e-013 };
 
-    double orde[] = {-4.8848247487963425e+002,
-                     1.0955158773901486e+001,
-                     -9.5262780549231291e-002,
-                     4.0493765879295917e-004,
-                     -8.4429904418805596e-007,
-                     6.9449433208931844e-010};
+    // double orde[] = {-4.8848247487963425e+002,
+    //                  1.0955158773901486e+001,
+    //                  -9.5262780549231291e-002,
+    //                  4.0493765879295917e-004,
+    //                  -8.4429904418805596e-007,
+    //                  6.9449433208931844e-010};
     double result = 0;
-    for (int i = 0; i <= max_orde; i++)
-    {
+    for (int i = 0; i <= max_orde; i++) {
         result += (orde[i] * pow(pix, i));
     }
 
@@ -47,7 +51,7 @@ PolynomialRegression::PolynomialRegression(int degree)
     w = vector<double>(degree + 1, 0);
 }
 
-void PolynomialRegression::fit(const vector<double> &x, const vector<double> &y)
+void PolynomialRegression::fit(const vector<double>& x, const vector<double>& y)
 {
     int n = x.size();
     Mat X = Mat::zeros(n, degree + 1, CV_64FC1);
@@ -57,11 +61,9 @@ void PolynomialRegression::fit(const vector<double> &x, const vector<double> &y)
     Mat W_inv_X = Mat::zeros(degree + 1, n, CV_64FC1);
     Mat W_inv_X_Y = Mat::zeros(degree + 1, 1, CV_64FC1);
 
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         Y.at<double>(i, 0) = y[i];
-        for (int j = 0; j < degree + 1; j++)
-        {
+        for (int j = 0; j < degree + 1; j++) {
             X.at<double>(i, j) = pow(x[i], j);
         }
     }
@@ -71,8 +73,7 @@ void PolynomialRegression::fit(const vector<double> &x, const vector<double> &y)
     W_inv_X = W_inv * X.t();
     W_inv_X_Y = W_inv_X * Y;
 
-    for (int i = 0; i < degree + 1; i++)
-    {
+    for (int i = 0; i < degree + 1; i++) {
         w[i] = W_inv_X_Y.at<double>(i, 0);
     }
 }
@@ -80,8 +81,7 @@ void PolynomialRegression::fit(const vector<double> &x, const vector<double> &y)
 double PolynomialRegression::predict(double x)
 {
     double y = 0;
-    for (int i = 0; i < degree + 1; i++)
-    {
+    for (int i = 0; i < degree + 1; i++) {
         y += w[i] * pow(x, i);
     }
     return y;
@@ -90,8 +90,7 @@ double PolynomialRegression::predict(double x)
 void PolynomialRegression::print()
 {
     cout << "y = ";
-    for (int i = degree; i >= 0; i--)
-    {
+    for (int i = degree; i >= 0; i--) {
         cout << w[i] << "x^" << i;
         if (i != 0)
             cout << " + ";
@@ -107,8 +106,7 @@ vector<double> PolynomialRegression::getW()
 int SizeOfLane(vector<Lane> lanes, int start_idx, int end_idx)
 {
     int size = 0;
-    for (int i = start_idx; i < end_idx; i++)
-    {
+    for (int i = start_idx; i < end_idx; i++) {
         if (lanes[i].x != NULL && lanes[i].y != NULL)
             size++;
     }

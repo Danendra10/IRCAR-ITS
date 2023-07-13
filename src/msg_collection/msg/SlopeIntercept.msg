@@ -1,0 +1,7 @@
+float32 slope_left
+float32 slope_middle
+float32 slope_right
+
+float32 intercept_left
+float32 intercept_middle
+float32 intercept_right
