@@ -30,6 +30,7 @@ typedef struct general_data_tag
 {
     Velocity car_vel;
     CarPose car_pose;
+    Target car_target;
     Target car_target_left;
     Target car_target_right;
     CarData car_data;
@@ -62,6 +63,8 @@ typedef struct general_data_tag
     uint8_t car_side;
     uint8_t moved_state;
     uint16_t sign_type;
+    uint16_t prev_sign_type;
+    uint16_t lock_state;
     uint8_t signal_stop;
 
 } general_data_t, *general_data_ptr;
@@ -245,7 +248,9 @@ void AutoDrive(general_data_ptr data);
 void TurnCarLeft90Degree(general_data_ptr general_data);
 void TurnCarRight90Degree(general_data_ptr general_data);
 void KeepForward(general_data_ptr general_data);
+void TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn);
 void StopRobot(general_data_ptr data);
+void UrbanMovement(general_data_ptr data);
 int8_t kbhit()
 {
     static const int STDIN = 0;
