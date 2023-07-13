@@ -1,3 +1,12 @@
+/**
+ * Developed By @author
+ * 1. @danendra10 github.com/danendra10
+ * 2. @issabeljt github.com/issabeljt
+ * 3. @hernanda16 github.com/hernanda16
+ *
+ * Auto Drive https://miro.com/app/board/uXjVM2AznZ0=/?share_link_id=411945080257
+ */
+
 #include "master/master.hh"
 
 #define DRIVE
@@ -33,7 +42,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
         return;
     GetKeyboard();
     SimulatorState();
-    // AutoDrive(&general_instance);
+    AutoDrive(&general_instance);
     TurnCarRight90Degree2(&general_instance, -5, 10);
     // DecideCarTarget(&general_instance);
     TransmitData(&general_instance);
