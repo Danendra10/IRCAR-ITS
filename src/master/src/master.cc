@@ -18,6 +18,12 @@ int main(int argc, char **argv)
     ros::NodeHandle NH;
     ros::MultiThreadedSpinner MTS;
 
+    if (MasterInit() == -1)
+    {
+        ros::shutdown();
+        return -1;
+    }
+
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
@@ -40,13 +46,10 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
-    // printf("Data Validator: %d\n", data_validator);
-    // if (data_validator < 0b111)
-    //     return;
     GetKeyboard();
     SimulatorState();
-    AutoDrive(&general_instance);
-// DecideCarTarget(&general_instance);
+    // AutoDrive(&general_instance);
+    DecideCarTarget(&general_instance);
 #ifdef TRANSMIT_VELOCITY
     TransmitData(&general_instance);
 #endif
@@ -87,9 +90,7 @@ void GetKeyboard()
 
 void MoveRobot(float vx_, float vz_)
 {
-
-    general_instance.car_vel.x = vx_;
-    general_instance.car_vel.th = vz_;
+    MotionControl(vx_, vz_);
 }
 
 void SimulatorState()
@@ -140,7 +141,7 @@ void AutoDrive(general_data_ptr data)
         else
             is_unlocked = false;
 
-        Logger(RED, "is_unlocked: %d || Detected a sign %d", is_unlocked, data->sign_type);
+        // Logger(RED, "is_unlocked: %d || Detected a sign %d", is_unlocked, data->sign_type);
 
         switch (data->sign_type)
         {
@@ -448,21 +449,10 @@ void UrbanMovement(general_data_ptr data)
 
 void RobotMovement(general_data_ptr data)
 {
+    static float vel_linear = 0;
+    static float vel_angular = 0;
     // // PURE PURSUIT
     float ld = 10;
-    // ROS_INFO("FIXED TARGETTT %f %f\n", data->car_target.x, data->car_target.y);
-
-    // for (int i = 0; i < data->path_lane.size(); i++)
-    // {
-    //     float dist = sqrt(pow(data->path_lane[i].x, 2) + pow(data->path_lane[i].y, 2));
-    //     // printf("i %d point %f %f dist %f diff %f\n", i, data->path_lane[i].x, data->path_lane[i].y, dist, abs(dist - ld));
-    //     if (abs(dist - ld) < 0.01)
-    //     {
-    //         data->car_target.x = data->path_lane[i].x;
-    //         data->car_target.y = data->path_lane[i].y;
-    //         break;
-    //     }
-    // }
 
     // from rear wheel
     float dist_x = data->car_target.x + 3.8;
@@ -477,34 +467,29 @@ void RobotMovement(general_data_ptr data)
     // printf("delta %f\n", delta);
     if (abs(delta) < 0.05)
     {
-        data->car_vel.th = 0;
-        data->car_vel.x = 2.8;
+        vel_angular = 0;
+        vel_linear = 5;
     }
-
     else
     {
-        data->car_vel.x = 2.8;
+        vel_linear = 5;
         if (data->car_target.y < 0)
-            data->car_vel.th = RAD2DEG(delta) / 16;
-        // data->car_vel.th = RAD2DEG(delta) / (data->car_vel.x / 0.1);
+            vel_angular = RAD2DEG(delta) / 16;
+        // vel_angular = RAD2DEG(delta) / (vel_linear / 0.1);
         else
-            // data->car_vel.th = -1 * RAD2DEG(delta) / (data->car_vel.x / 0.1);
-            data->car_vel.th = -1 * RAD2DEG(delta) / 16;
+            // vel_angular = -1 * RAD2DEG(delta) / (vel_linear / 0.1);
+            vel_angular = -1 * RAD2DEG(delta) / 16;
     }
-    printf("v th %f\n", data->car_vel.th);
+    MotionControl(vel_linear, vel_angular);
+    printf("v th %f || v linear %f\n", motion_return.angular, motion_return.linear);
     // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);
 }
 
 void TransmitData(general_data_ptr data)
 {
     geometry_msgs::Twist vel_msg;
-    vel_msg.angular.z = data->car_vel.th;
-    vel_msg.linear.x = data->car_vel.x;
-    // if (general_instance.signal_stop)
-    // {
-    //     vel_msg.angular.z = 0;
-    //     vel_msg.linear.x = 0;
-    // }
+    vel_msg.linear.x = motion_return.linear;
+    vel_msg.angular.z = motion_return.angular;
     data->pub_car_vel.publish(vel_msg);
 
     //============
@@ -514,4 +499,48 @@ void TransmitData(general_data_ptr data)
     msg_collection::CmdVision cmd;
     cmd.find_3_lanes = true;
     data->pub_cmd_vision.publish(cmd);
+}
+
+//----------------------------------------------------------------------------------------------
+
+int MasterInit()
+{
+    try
+    {
+        char cfg_file[100];
+        std::string current_path = ros::package::getPath("vision");
+        sprintf(cfg_file, "%s/../../config/static_conf.yaml", current_path.c_str());
+
+        printf("Loading config file: %s\n", cfg_file);
+
+        YAML::Node config = YAML::LoadFile(cfg_file);
+
+        pid_linear_const.kp = config["PID"]["Linear"]["kp"].as<float>();
+        pid_linear_const.ki = config["PID"]["Linear"]["ki"].as<float>();
+        pid_linear_const.kd = config["PID"]["Linear"]["kd"].as<float>();
+
+        pid_angular_const.kp = config["PID"]["Angular"]["kp"].as<float>();
+        pid_angular_const.ki = config["PID"]["Angular"]["ki"].as<float>();
+        pid_angular_const.kd = config["PID"]["Angular"]["kd"].as<float>();
+    }
+    catch (YAML::BadFile &e)
+    {
+        printf("Error: %s\n", e.what());
+    }
+    catch (YAML::ParserException &e)
+    {
+        printf("Error: %s\n", e.what());
+    }
+    catch (YAML::RepresentationException &e)
+    {
+        printf("Error: %s\n", e.what());
+    }
+    catch (std::exception &e)
+    {
+        printf("Error: %s\n", e.what());
+    }
+    catch (...)
+    {
+        cout << "Error caught on line: " << __LINE__ << endl;
+    }
 }

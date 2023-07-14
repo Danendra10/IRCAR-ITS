@@ -42,7 +42,7 @@ cv::Ptr<cv::aruco::DetectorParameters> detector_params_ptr;
 cv::Ptr<cv::aruco::Dictionary> dictionary;
 
 //---Conf Params
-int thresh_road_sign = 190;
+int thresh_road_sign = 170;
 int max_val = 255;
 uint8_t threshold_counter_road_sign;
 int distance_to_road_sign_threshold;

@@ -4,3 +4,13 @@ x_pos_road_sign_threshold: 550
 y_pos_road_sign_threshold: 270
 thresh_road_sign: 195
 max_val: 255
+
+PID:
+  Linear:
+    kp: 0.5
+    ki: 0.0001
+    kd: 0.1
+  Angular:
+    kp: 0.5
+    ki: 0
+    kd: 0.1

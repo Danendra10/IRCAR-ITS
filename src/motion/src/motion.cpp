@@ -29,3 +29,21 @@ void ManualMotion(float linear_vel, float angular_vel, float target_x, float tar
     vel_ret->linear = output_linear;
     vel_ret->angular = output_angular;
 }
+
+void MotionControl(float linear_vel, float angular_vel, Velocity_t *vel_ret)
+{
+    static PID_t linear_pid;
+    static PID_t angular_pid;
+
+    PIDInit(&linear_pid, pid_linear_const);
+    PIDInit(&angular_pid, pid_angular_const);
+
+    float error_vel_linear = linear_vel - vel_ret->linear;
+    float error_vel_angular = angular_vel - vel_ret->angular;
+
+    float output_linear = PIDCalculate(&linear_pid, error_vel_linear, linear_vel);
+    float output_angular = PIDCalculate(&angular_pid, error_vel_angular, angular_vel);
+
+    vel_ret->linear = output_linear;
+    vel_ret->angular = output_angular;
+}

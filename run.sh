@@ -12,5 +12,12 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Running in real mode"
-source $current_path/devel/setup.bash
-roslaunch master master.launch
+
+# if the first argument is 1 then run in real mod
+if [ "$1" = "1" ]; then
+    echo "Running in real mode"
+    roslaunch master master.launch is_urban:=1
+else
+    echo "Running in simulation mode"
+    roslaunch master master.launch is_urban:=0
+fi

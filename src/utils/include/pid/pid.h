@@ -2,6 +2,7 @@
 #define PID_H_
 
 #include <chrono>
+#include "entity/entity.hh"
 
 #define DEG2RAD(x) ((x)*M_PI / 180.0)
 #define RAD2DEG(x) ((x)*180.0 / M_PI)
@@ -34,6 +35,14 @@ extern "C"
         pid->Ki = Ki;
         pid->Kd = Kd;
     }
+
+    void PIDInit(PID_t *pid, PID_Const in_pid)
+    {
+        pid->Kp = in_pid.kp;
+        pid->Ki = in_pid.ki;
+        pid->Kd = in_pid.kd;
+    }
+
     float PIDCalculate(PID_t *pid, float error, float minmax)
     {
         std::chrono::high_resolution_clock::time_point t_now = std::chrono::high_resolution_clock::now();

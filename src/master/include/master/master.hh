@@ -2,6 +2,7 @@
 #define __MASTER_HH_
 
 #include "ros/ros.h"
+#include "ros/package.h"
 
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
@@ -21,6 +22,9 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <exception>
+#include "yaml-cpp/yaml.h"
+#include <iostream>
+#include <string>
 
 #include "entity/entity.hh"
 #include "logger/logger.h"
@@ -93,6 +97,11 @@ uint8_t data_validator = 0b000;
 //==============================================================================
 
 const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
+
+//==============================================================================
+
+extern PID_Const pid_linear_const;
+extern PID_Const pid_angular_const;
 
 //==============================================================================
 
@@ -298,6 +307,7 @@ bool TurnCarRight90Degree2(general_data_ptr general_data, float steering, float 
 void StopRobot(general_data_ptr data);
 bool StopRobot(general_data_ptr data, float time_to_stop);
 void UrbanMovement(general_data_ptr data);
+int MasterInit();
 int8_t kbhit()
 {
     static const int STDIN = 0;

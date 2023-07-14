@@ -74,6 +74,13 @@ struct CameraParameters
     double cam_scale_y;   // in cm
 };
 
+struct PID_Const
+{
+    float kp;
+    float ki;
+    float kd;
+};
+
 typedef Pose3D CarPose, *CarPosePtr;
 typedef Pose2D Lane, *LanePtr;
 typedef Pose2D RealLane, *RealLanePtr;
@@ -81,4 +88,6 @@ typedef Pose2D Obstacles, *ObstaclesPtr;
 typedef Vector3D Velocity, *VelocityPtr;
 typedef Vector3D Target, *TargetPtr;
 
+PID_Const pid_linear_const;
+PID_Const pid_angular_const;
 #endif

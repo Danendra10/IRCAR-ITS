@@ -68,7 +68,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     dilate(thresholded, thresholded, Mat(), Point(-1, -1), 2);
 
     //--->Aruco Detect marker using the thresholded image
-    aruco::detectMarkers(thresholded, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
+    aruco::detectMarkers(frame_raw, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
     aruco::drawDetectedMarkers(output_image, marker_corners, marker_ids);
 
     //---find the closest marker
@@ -146,7 +146,12 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     }
 
 #ifdef SHOW_FRAME
-    imshow("thresholded", thresholded);
+    // if (thresholded.empty() || frame_raw.empty() || output_image.empty())
+    // {
+    //     ROS_ERROR("thresholded is empty");
+    //     return;
+    // }
+    // imshow("thresholded", thresholded);
     imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);
 #endif

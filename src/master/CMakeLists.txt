@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 catkin_package(
  INCLUDE_DIRS include
@@ -28,4 +29,4 @@ include_directories(
 )
 
 add_executable(master src/master.cc)
-target_link_libraries(master ${catkin_LIBRARIES} ${OpenCV_LIBRARIES}  entity_lib motion_lib logger_lib math_lib)
+target_link_libraries(master ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAML_CPP_LIBRARIES} entity_lib motion_lib logger_lib math_lib)
