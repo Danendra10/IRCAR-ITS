@@ -76,6 +76,8 @@ Mat resized;
 Mat grayresized;
 // Mat imremapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
 
+int target_x;
+int target_y;
 int x_target_left, x_target_right;
 int y_target_left, y_target_right;
 #define LeftLane true
@@ -89,24 +91,24 @@ bool isWait = false;
 int road_target = 1;
 int prev_x_target = 6969;
 int prev_spike = 3;
-int x_target, y_target;
+float x_target, y_target;
 bool problem;
 bool must3Lines = true;
 bool find3Lines;
 bool canbeIntercept = true;
 double line_SI[3][2];
-int prev_left[2];
-int prev_middle[2];
-int prev_right[2];
+float prev_left[2];
+float prev_middle[2];
+float prev_right[2];
 
 PolynomialRegression polynom(DEGREE);
 
 //============================================================
 
-void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr& msg);
-void SubOdomRaw(const nav_msgs::Odometry::ConstPtr& msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr& msg);
-void SubCmdVision(const msg_collection::CmdVision::ConstPtr& msg);
+void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
+void SubCmdVision(const msg_collection::CmdVision::ConstPtr &msg);
 
 //============================================================
 
@@ -134,12 +136,12 @@ std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, 
 cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat& frame, cv::Mat& frame_faraway);
-void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line);
-void Display(cv::Mat& frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
-void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines);
-void Average_BinaryStacking(cv::Mat frame, cv::Vec4i& lines);
-void SlopeIntercept(cv::Vec4i& lines, double& slope, double& intercept);
+void ROI(cv::Mat &frame, cv::Mat &frame_faraway);
+void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line);
+void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
+void Average_BinaryStacking(cv::Mat frame, cv::Vec4i &lines);
+void SlopeIntercept(cv::Vec4i &lines, double &slope, double &intercept);
 cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
 std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
 std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y);

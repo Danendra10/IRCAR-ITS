@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     /**
      * TODO: No data being published @hernanda16
      */
-    general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
+    // general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
@@ -46,6 +46,7 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
+    // printf("pid_angular_const %f %f %f || pid_linear %f %f %f\n", pid_angular_const.kp, pid_angular_const.ki, pid_angular_const.kd, pid_linear_const.kp, pid_linear_const.ki, pid_linear_const.kd);
     GetKeyboard();
     SimulatorState();
     // AutoDrive(&general_instance);
@@ -375,7 +376,7 @@ void DecideCarTarget(general_data_ptr general_data)
 {
     try
     {
-        if (data_validator < 0b0111)
+        if (data_validator < 0b011)
             return;
 
         // left and right from car's pov
@@ -384,7 +385,7 @@ void DecideCarTarget(general_data_ptr general_data)
         float obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
         float obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
         // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
-        if (general_data->obs_status == 0)
+        if (!general_data->obs_status)
             general_data->car_side = 0;
         else
         {
@@ -414,7 +415,7 @@ void DecideCarTarget(general_data_ptr general_data)
             break;
         }
 
-        ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
+        // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
 
         // ROS_INFO("target %f %f %f\n", general_data->car_target_left.x, general_data->car_target_left.y, general_data->car_target_left.th);
         // ROS_INFO("target %f %f %f\n", general_data->car_target_right.x, general_data->car_target_right.y, general_data->car_target_right.th);
@@ -454,6 +455,8 @@ void RobotMovement(general_data_ptr data)
     // // PURE PURSUIT
     float ld = 10;
 
+    ROS_INFO("TARGET : %f %f", data->car_target.x, data->car_target.y);
+
     // from rear wheel
     float dist_x = data->car_target.x + 3.8;
     float dist_y = data->car_target.y;
@@ -465,23 +468,21 @@ void RobotMovement(general_data_ptr data)
 
     float delta = atan(2 * l * sin(alpha) / ld);
     // printf("delta %f\n", delta);
+    vel_linear = 5;
     if (abs(delta) < 0.05)
-    {
         vel_angular = 0;
-        vel_linear = 5;
-    }
     else
     {
-        vel_linear = 5;
         if (data->car_target.y < 0)
-            vel_angular = RAD2DEG(delta) / 16;
-        // vel_angular = RAD2DEG(delta) / (vel_linear / 0.1);
+            // vel_angular = RAD2DEG(delta) / 16;
+            vel_angular = RAD2DEG(delta) * vel_linear / 0.15;
         else
-            // vel_angular = -1 * RAD2DEG(delta) / (vel_linear / 0.1);
-            vel_angular = -1 * RAD2DEG(delta) / 16;
+            vel_angular = -1 * RAD2DEG(delta) * vel_linear / 0.15;
+        // vel_angular = -1 * RAD2DEG(delta) / 16;
     }
+    // printf("Vel input %f %f\n", vel_linear, vel_angular);
     MotionControl(vel_linear, vel_angular);
-    printf("v th %f || v linear %f\n", motion_return.angular, motion_return.linear);
+    // printf("v th %f || v linear %f\n", motion_return.angular, motion_return.linear);
     // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);
 }
 
@@ -497,7 +498,7 @@ void TransmitData(general_data_ptr data)
     // some urgency make it happens. ex : there's obstacle but only got 2 lines of data making error in lane decision
     //============
     msg_collection::CmdVision cmd;
-    cmd.find_3_lanes = true;
+    cmd.find_3_lanes = false;
     data->pub_cmd_vision.publish(cmd);
 }
 
