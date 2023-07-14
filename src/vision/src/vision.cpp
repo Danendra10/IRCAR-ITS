@@ -30,7 +30,6 @@ int main(int argc, char **argv)
     sub_cmd_vision = NH.subscribe("/cmd_vision", 1, SubCmdVision);
 
     pub_car_pose = NH.advertise<geometry_msgs::Point>("/car_pose", 1);
-    pub_points = NH.advertise<msg_collection::PointArray>("/lines", 1);
     pub_target = NH.advertise<msg_collection::RealPosition>("/real_lines", 1);
     pub_slope = NH.advertise<msg_collection::SlopeIntercept>("/vision/slope", 1);
 
@@ -160,7 +159,6 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
         real.middle_lane_y_real.push_back(PxToM(middle_lane[i].x - 400) + car_pose.y);
     }
 
-    pub_points.publish(lane);
     pub_lane.publish(real);
 
     polynom.fit(x_middle_lane, y_middle_lane);
@@ -653,10 +651,10 @@ void ROI(cv::Mat &frame, cv::Mat &frame_faraway)
     cv::Mat frame_mask_far(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     std::vector<cv::Point> ROI;
 
-    ROI.push_back(cv::Point(150, 700)); // bottom left
-    ROI.push_back(cv::Point(650, 700)); // bottom right
-    ROI.push_back(cv::Point(650, 440)); // top right
-    ROI.push_back(cv::Point(150, 440)); // top left
+    ROI.push_back(cv::Point(100, 700)); // bottom left
+    ROI.push_back(cv::Point(700, 700)); // bottom right
+    ROI.push_back(cv::Point(700, 500)); // top right
+    ROI.push_back(cv::Point(100, 500)); // top left
 
     std::vector<cv::Point> ROI_left;
 
@@ -668,8 +666,8 @@ void ROI(cv::Mat &frame, cv::Mat &frame_faraway)
     std::vector<cv::Point> ROI_right;
 
     ROI_right.push_back(cv::Point(300, 700)); // bottom right
-    ROI_right.push_back(cv::Point(250, 700)); // bottom left
-    ROI_right.push_back(cv::Point(250, 440)); // top left
+    ROI_right.push_back(cv::Point(150, 700)); // bottom left
+    ROI_right.push_back(cv::Point(150, 440)); // top left
     ROI_right.push_back(cv::Point(300, 440)); // top right
 
     std::vector<cv::Point> ROI_center;
@@ -1150,7 +1148,7 @@ std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, 
     const int num_windows = 9;
     const int margin = 50;
     const int min_px = 100;
-    int window_height = (int)((700 - 440) / (float)num_windows); // from ROI
+    int window_height = (int)((700 - 500) / (float)num_windows); // from ROI
     std::vector<int> current_x;
     std::vector<std::vector<int>> in_window(500);
     cv::Vec2i win_y;
@@ -1310,7 +1308,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     {
         CenterSpike(verticalSum, start[i], stop[i], center_x_base[i]);
         // Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
-        if (center_x_base[i] - center_x_base[i - 1] < 80 && i != 0)
+        if (center_x_base[i] - center_x_base[i - 1] < 100 && i != 0)
         {
             center_x_final.pop_back();
             center_x_final.push_back((center_x_base[i] + center_x_base[i - 1]) / 2.0);
@@ -1344,7 +1342,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         lane[i].push_back(in_points[i]);
         // Display(frame_dst, lane[i], i * 100, 1 * 100, 255, 0.5);
         // SlopeIntercept(in_points[i], line_SI[i][0], line_SI[i][1]); //0 -> left, 1-> middle, 2 -> right
-        // cv::circle(frame_dst, cv::Point((int)((frame.rows - 180 - line_SI[i][1]) / line_SI[i][0]), frame.rows - 180), 3, cv::Scalar(i * 100, i * 100, 255), 7);
+        // cv::circle(frame_dst, cv::Point((int)((frame.rows - 220 - line_SI[i][1]) / line_SI[i][0]), frame.rows - 220), 3, cv::Scalar(i * 100, i * 100, 255), 7);
     }
 
     for (int i = 0; i < 3; i++)
@@ -1362,6 +1360,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 
     if (spike_final == 3)
     {
+        Logger(GREEN, "3 LINES DETECTED");
         road_target = 1;
         must3Lines = false;
         canbeIntercept = true;
@@ -1373,17 +1372,19 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             // Logger(BLUE, "in_point[%d]", i);
         }
 
-        y_target = frame.rows - 180;
-        x_target = (int)((y_target - line_SI[1][1]) / line_SI[1][0]);
+        y_target = frame.rows - 220;
+        x_target = ((y_target - line_SI[1][1]) / line_SI[1][0]);
+
         prev_left[0] = 0;
         prev_middle[0] = 1;
         prev_right[0] = 2;
-        prev_left[1] = (int)((y_target - line_SI[0][1]) / line_SI[0][0]);
-        prev_middle[1] = (int)((y_target - line_SI[1][1]) / line_SI[1][0]);
-        prev_right[1] = (int)((y_target - line_SI[2][1]) / line_SI[2][0]);
+        prev_left[1] = ((y_target - line_SI[0][1]) / line_SI[0][0]);
+        prev_middle[1] = ((y_target - line_SI[1][1]) / line_SI[1][0]);
+        prev_right[1] = ((y_target - line_SI[2][1]) / line_SI[2][0]);
     }
     else if (spike_final > 3 && !must3Lines)
     {
+        Logger(GREEN, "MORE THAN 3 LINES DETECTED");
         for (int i = 0; i < in_points.size(); i++)
         {
             // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
@@ -1412,9 +1413,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 
         Logger(GREEN, "left : %d | mid : %d | right : %d", prev_left[0], prev_middle[0], prev_right[0]);
 
-        prev_left[1] = (int)((y_target - line_SI[0][1]) / line_SI[0][0]);
-        prev_middle[1] = (int)((y_target - line_SI[1][1]) / line_SI[1][0]);
-        prev_right[1] = (int)((y_target - line_SI[2][1]) / line_SI[2][0]);
+        prev_left[1] = ((y_target - line_SI[0][1]) / line_SI[0][0]);
+        prev_middle[1] = ((y_target - line_SI[1][1]) / line_SI[1][0]);
+        prev_right[1] = ((y_target - line_SI[2][1]) / line_SI[2][0]);
 
         // if above cannot determine new road target from prev x in new sliding windows, problem cannot be false
         if (problem)
@@ -1424,11 +1425,12 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             Logger(YELLOW, "current prev x target %d", prev_x_target);
             Logger(YELLOW, "current prev spike %d", prev_spike);
             x_target = prev_x_target;
-            y_target = frame.rows - 180;
+            y_target = frame.rows - 220;
         }
     }
     else if (spike_final == 2 && (!must3Lines))
     {
+        Logger(GREEN, "2 LINES DETECTED");
         for (int i = 0; i < in_points.size(); i++)
         {
             // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
@@ -1452,22 +1454,22 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             SlopeIntercept(in_points[1], line_SI[1][0], line_SI[1][1]); // middle
         }
 
-        y_target = frame.rows - 180;
-        x_target = (int)((y_target - line_SI[1][1]) / line_SI[1][0]);
+        y_target = frame.rows - 220;
+        x_target = ((y_target - line_SI[1][1]) / line_SI[1][0]);
         if (line_SI[0][0] != 0)
         {
             prev_left[0] = road_target - 1;
-            prev_left[1] = (int)((y_target - line_SI[0][1]) / line_SI[0][0]);
+            prev_left[1] = ((y_target - line_SI[0][1]) / line_SI[0][0]);
         }
         if (line_SI[1][0] != 0)
         {
             prev_middle[0] = road_target;
-            prev_middle[1] = (int)((y_target - line_SI[1][1]) / line_SI[1][0]);
+            prev_middle[1] = ((y_target - line_SI[1][1]) / line_SI[1][0]);
         }
         if (line_SI[2][0] != 0)
         {
             prev_right[0] = road_target + 1;
-            prev_right[1] = (int)((y_target - line_SI[2][1]) / line_SI[2][0]);
+            prev_right[1] = ((y_target - line_SI[2][1]) / line_SI[2][0]);
         }
 
         // if above cannot determine new road target from prev x in new sliding windows, problem cannot be false
@@ -1478,11 +1480,14 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             Logger(YELLOW, "current prev x target %d", prev_x_target);
             Logger(YELLOW, "current prev spike %d", prev_spike);
             x_target = prev_x_target;
-            y_target = frame.rows - 180;
+            y_target = frame.rows - 220;
+            // must3Lines = true;
+            // canbeIntercept = false;
         }
     }
     else if (spike_final < 2 && (!must3Lines))
     {
+        Logger(GREEN, "1 LINE DETECTED");
         if (abs(prev_x_target - in_points[0][0]) < 100 && abs(prev_x_target - in_points[0][2]) < 100)
         {
             road_target = 0;
@@ -1500,7 +1505,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         Logger(GREEN, "current prev x target %d", prev_x_target);
         Logger(GREEN, "current prev spike %d", prev_spike);
         x_target = prev_x_target;
-        y_target = frame.rows - 180;
+        y_target = frame.rows - 220;
         must3Lines = true;
         canbeIntercept = false;
     }
@@ -1509,12 +1514,12 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     {
         must3Lines = true;
     }
-
+    // printf("x_target : %.f %.f || %.f %.f || %.f\n", x_target, y_target, line_SI[1][1], line_SI[1][0], (y_target - line_SI[1][1]) / line_SI[1][0]);
     if (spike_final > 0)
     {
         // problem false indicating there is no problem in assigning road target
         //  if (!problem) {
-        //      y_target = frame.rows - 180;
+        //      y_target = frame.rows - 220;
         //      x_target = (int)((y_target - line_SI[road_target][1]) / line_SI[road_target][0]);
         //  } else {
         //      problem = false;
@@ -1537,31 +1542,26 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         Display(frame_dst, line_mid, 0, 255, 0, 0.5);
         Display(frame_dst, line_right, 0, 0, 255, 0.5);
 
-        prev_x_target = x_target;
+        if (!isnan(x_target))
+        {
+            prev_x_target = x_target;
+            target_x = x_target;
+        }
 
-        x_target_left = x_target;
-        y_target_left = y_target;
-        x_target_right = (in_points[1][0] + in_points[2][0]) / 2.0;
-        y_target_right = (in_points[1][1] + in_points[2][1]) / 2.0;
+        target_y = y_target;
 
-        cv::circle(frame_dst, cv::Point(x_target_left, y_target_left), 3, cv::Scalar(255, 255, 0), 7);
+        cv::circle(frame_dst, cv::Point(target_x, target_y), 3, cv::Scalar(255, 255, 0), 7);
         // cv::circle(frame_dst, cv::Point(x_target_right, y_target_right), 3, cv::Scalar(0, 255, 255), 7);
 
         msg_collection::RealPosition lane;
-        float dist_x_left = 800 - y_target_left;
-        float dist_y_left = x_target_left - 400;
-        float dist_x_right = 800 - y_target_right;
-        float dist_y_right = x_target_right - 400;
+        float dist_x = 800 - target_y;
+        float dist_y = target_x - 400;
 
-        float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
-        float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
-        float angle_diff_left = atan(dist_x_left / dist_y_left);
-        float angle_diff_right = atan(dist_x_right / dist_y_right);
+        float distance = pixel_to_real(sqrt(pow(dist_x, 2) + pow(dist_y, 2)));
+        float angle_diff = atan(dist_x / dist_y);
 
-        if (dist_y_left < 0)
-            angle_diff_left += DEG2RAD(180);
-        if (dist_y_right < 0)
-            angle_diff_right += DEG2RAD(180);
+        if (dist_y < 0)
+            angle_diff += DEG2RAD(180);
 
         // printf("angle %f dist %f\n", RAD2DEG(angle_diff), distance);
 
@@ -1589,10 +1589,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             lane.right_lane_y_bottom = in_points[prev_right[0]][3];
         }
 
-        lane.target_x_left = distance_left * sin(angle_diff_left);
-        lane.target_y_left = distance_left * cos(angle_diff_left);
-        lane.target_x_right = distance_right * sin(angle_diff_right);
-        lane.target_y_right = distance_right * cos(angle_diff_right);
+        lane.target_x = distance * sin(angle_diff);
+        lane.target_y = distance * cos(angle_diff);
+
         lane.can_be_intercepted = canbeIntercept;
 
         // Logger(GREEN, "x_pub : %f y_pub : %f", lane.target_x_left, lane.target_y_left);

@@ -7,10 +7,10 @@ max_val: 255
 
 PID:
   Linear:
-    kp: 0.5
-    ki: 0.0001
+    kp: 0.7
+    ki: 0
     kd: 0.1
   Angular:
     kp: 0.5
-    ki: 0
+    ki: 0.001
     kd: 0.1

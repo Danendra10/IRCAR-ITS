@@ -31,7 +31,6 @@ int main(int argc, char **argv)
     /**
      * TODO: No data being published @hernanda16
      */
-    general_instance.sub_lines = NH.subscribe("/lines", 1, CllbckSubLaneVector);
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
@@ -46,6 +45,7 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
+    // printf("pid_angular_const %f %f %f || pid_linear %f %f %f\n", pid_angular_const.kp, pid_angular_const.ki, pid_angular_const.kd, pid_linear_const.kp, pid_linear_const.ki, pid_linear_const.kd);
     GetKeyboard();
     SimulatorState();
     // AutoDrive(&general_instance);
@@ -326,46 +326,46 @@ void KeepForward(general_data_ptr general_data)
      * If it is linear, keep moving forward
      * If it is not linear, adjust the target to align with the lane's angle
      */
-    int middle_lane_size = general_data->middle_lane.size();
-    int left_lane_size = general_data->left_lane.size();
-    int right_lane_size = general_data->right_lane.size();
-    int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
+    // int middle_lane_size = general_data->middle_lane.size();
+    // int left_lane_size = general_data->left_lane.size();
+    // int right_lane_size = general_data->right_lane.size();
+    // int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
 
-    int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
+    // int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
 
-    if (size_of_middle_lane_close_to_robot == -1)
-    {
-        // keep forward
-        general_data->car_target_left.x = general_data->car_pose.x + 0.5;
-        general_data->car_target_left.y = general_data->car_pose.y;
-        general_data->car_target_left.th = general_data->car_pose.th;
-    }
+    // if (size_of_middle_lane_close_to_robot == -1)
+    // {
+    //     // keep forward
+    //     general_data->car_target_left.x = general_data->car_pose.x + 0.5;
+    //     general_data->car_target_left.y = general_data->car_pose.y;
+    //     general_data->car_target_left.th = general_data->car_pose.th;
+    // }
 
     // Check if the robot's angle is linear with the angle of the lane
-    if (middle_lane_size > 400 && abs(dist_between_points) < 20)
-    {
-        // The robot's angle is linear with the angle of the lane, keep moving forward
-        general_data->car_target_left.x = general_data->car_pose.x;
-        general_data->car_target_left.y = general_data->car_pose.y;
-        general_data->car_target_left.th = general_data->car_pose.th;
-    }
-    else
-    {
-        // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
-        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
-        {
-            general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
-            general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
-            general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
-        }
-        else
-        {
-            // The robot's angle is not linear and no specific side is determined, keep moving forward
-            general_data->car_target_left.x = general_data->car_pose.x;
-            general_data->car_target_left.y = general_data->car_pose.y;
-            general_data->car_target_left.th = general_data->car_pose.th;
-        }
-    }
+    // if (middle_lane_size > 400 && abs(dist_between_points) < 20)
+    // {
+    //     // The robot's angle is linear with the angle of the lane, keep moving forward
+    //     general_data->car_target_left.x = general_data->car_pose.x;
+    //     general_data->car_target_left.y = general_data->car_pose.y;
+    //     general_data->car_target_left.th = general_data->car_pose.th;
+    // }
+    // else
+    // {
+    //     // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
+    //     if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0))
+    //     {
+    //         // general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
+    //         // general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
+    //         general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
+    //     }
+    //     else
+    //     {
+    //         // The robot's angle is not linear and no specific side is determined, keep moving forward
+    //         general_data->car_target_left.x = general_data->car_pose.x;
+    //         general_data->car_target_left.y = general_data->car_pose.y;
+    //         general_data->car_target_left.th = general_data->car_pose.th;
+    //     }
+    // }
 
     // Call the RobotMovement function with the updated target to keep the car moving forward
     RobotMovement(general_data);
@@ -375,7 +375,7 @@ void DecideCarTarget(general_data_ptr general_data)
 {
     try
     {
-        if (data_validator < 0b0111)
+        if (data_validator < 0b011)
             return;
 
         // left and right from car's pov
@@ -396,32 +396,24 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side)
         {
         case 10:
-            printf("TARGET KIRI\n");
+            // printf("TARGET KIRI\n");
             general_data->car_target.x = general_data->car_target_left.x;
             general_data->car_target.y = general_data->car_target_left.y;
             break;
 
         case 20:
-            printf("TARGET KANAN\n");
+            // printf("TARGET KANAN\n");
             general_data->car_target.x = general_data->car_target_right.x;
             general_data->car_target.y = general_data->car_target_right.y;
             break;
 
         default:
-            printf("TENGAH\n");
-            // general_data->car_target.x = general_data->car_target_left.x;
-            // general_data->car_target.y = general_data->car_target_left.y;
+            // printf("TENGAH\n");
+
             break;
         }
 
-        ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
-
-        // ROS_INFO("target %f %f %f\n", general_data->car_target_left.x, general_data->car_target_left.y, general_data->car_target_left.th);
-        // ROS_INFO("target %f %f %f\n", general_data->car_target_right.x, general_data->car_target_right.y, general_data->car_target_right.th);
-        // if (general_data->middle_lane.size() < 0)
-        //     return;
-        // if (general_data->middle_lane[midd - 1].x == 0)
-        //     return;
+        // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
     }
     catch (const std::exception &e)
     {
@@ -454,6 +446,8 @@ void RobotMovement(general_data_ptr data)
     // // PURE PURSUIT
     float ld = 10;
 
+    ROS_INFO("TARGET : %f %f", data->car_target.x, data->car_target.y);
+
     // from rear wheel
     float dist_x = data->car_target.x + 3.8;
     float dist_y = data->car_target.y;
@@ -464,25 +458,21 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    // printf("delta %f\n", delta);
     if (abs(delta) < 0.05)
     {
+        vel_linear = 12;
         vel_angular = 0;
-        vel_linear = 5;
     }
     else
     {
-        vel_linear = 5;
+        vel_linear = 9;
+
         if (data->car_target.y < 0)
-            // vel_angular = RAD2DEG(delta) / 16;
-            vel_angular = RAD2DEG(delta) * data->car_vel.x / 0.15;
+            vel_angular = RAD2DEG(delta) * vel_linear / 0.2;
         else
-            vel_angular = -1 * RAD2DEG(delta) * data->car_vel.x / 0.15;
-        // vel_angular = -1 * RAD2DEG(delta) / 16;
+            vel_angular = -1 * RAD2DEG(delta) * vel_linear / 0.2;
     }
     MotionControl(vel_linear, vel_angular);
-    printf("v th %f || v linear %f\n", motion_return.angular, motion_return.linear);
-    // printf("rear x %f y %f|| Car %f %f %f || wheel %f %f\n", rear_joint_x, rear_joint_y, data->car_pose.x, data->car_pose.y, data->car_pose.th, data->car_data.rear_left_wheel_joint, data->car_data.rear_right_wheel_joint);
 }
 
 void TransmitData(general_data_ptr data)

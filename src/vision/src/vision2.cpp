@@ -16,7 +16,6 @@
 #include "nav_msgs/Odometry.h"
 #include "entity/entity.hh"
 #include "geometry_msgs/Point.h"
-#include "msg_collection/PointArray.h"
 #include "msg_collection/Obstacles.h"
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
