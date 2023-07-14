@@ -384,7 +384,7 @@ void DecideCarTarget(general_data_ptr general_data)
         float obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
         float obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
         // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
-        if (general_data->obs_status == 0)
+        if (!general_data->obs_status)
             general_data->car_side = 0;
         else
         {
@@ -474,11 +474,11 @@ void RobotMovement(general_data_ptr data)
     {
         vel_linear = 5;
         if (data->car_target.y < 0)
-            vel_angular = RAD2DEG(delta) / 16;
-        // vel_angular = RAD2DEG(delta) / (vel_linear / 0.1);
+            // vel_angular = RAD2DEG(delta) / 16;
+            vel_angular = RAD2DEG(delta) * data->car_vel.x / 0.15;
         else
-            // vel_angular = -1 * RAD2DEG(delta) / (vel_linear / 0.1);
-            vel_angular = -1 * RAD2DEG(delta) / 16;
+            vel_angular = -1 * RAD2DEG(delta) * data->car_vel.x / 0.15;
+        // vel_angular = -1 * RAD2DEG(delta) / 16;
     }
     MotionControl(vel_linear, vel_angular);
     printf("v th %f || v linear %f\n", motion_return.angular, motion_return.linear);
@@ -497,7 +497,7 @@ void TransmitData(general_data_ptr data)
     // some urgency make it happens. ex : there's obstacle but only got 2 lines of data making error in lane decision
     //============
     msg_collection::CmdVision cmd;
-    cmd.find_3_lanes = true;
+    cmd.find_3_lanes = false;
     data->pub_cmd_vision.publish(cmd);
 }
 

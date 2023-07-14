@@ -70,7 +70,7 @@ typedef struct general_data_tag
 
     MachineState main_state;
 
-    uint8_t obs_status;
+    bool obs_status;
     uint8_t car_side;
     uint8_t moved_state;
     uint16_t sign_type;
@@ -114,7 +114,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 
     if (msg->x.size() == 0)
     {
-        general_instance.obs_status = 0;
+        general_instance.obs_status = false;
 
         data_validator |= 0b010;
         return;
@@ -134,10 +134,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         obs.x = msg->x[i] + general_instance.car_pose.x;
         obs.y = msg->y[i] + general_instance.car_pose.y;
         general_instance.obs_data.push_back(obs);
-        // if (raw_obs.y > 0)
-        general_instance.obs_status = 1;
-        // else
-        //     general_instance.obs_status = 2;
+
+        general_instance.obs_status = true;
     }
 
     // printf("obs status %d\n", general_instance.obs_status);
@@ -198,8 +196,8 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     // }
     general_instance.car_target_left.x = msg->target_x_left;
     general_instance.car_target_left.y = msg->target_y_left;
-    // general_instance.car_target_right.x = msg->target_x_right;
-    // general_instance.car_target_right.y = msg->target_y_right;
+    general_instance.car_target_right.x = msg->target_x_right;
+    general_instance.car_target_right.y = msg->target_y_right;
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->left_lane_x_top, msg->left_lane_y_top, msg->left_lane_y_bottom, msg->left_lane_y_bottom));
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->middle_lane_x_top, msg->middle_lane_y_top, msg->middle_lane_y_bottom, msg->middle_lane_y_bottom));
     general_instance.vision_data_lane.push_back(cv::Vec4i(msg->right_lane_x_top, msg->right_lane_y_top, msg->right_lane_y_bottom, msg->right_lane_y_bottom));
