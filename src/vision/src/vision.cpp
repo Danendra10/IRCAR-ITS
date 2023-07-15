@@ -159,7 +159,7 @@ void Init()
 
 void Detect(cv::Mat frame)
 {
-    Logger(MAGENTA, "Detecting ...");
+    // Logger(MAGENTA, "Detecting ...");
     cv::Mat frame_gray, frame_canny, frame_thresh;
     cv::Mat result = frame.clone();
 
@@ -192,21 +192,21 @@ void Detect(cv::Mat frame)
     cv::Mat frame_canny_resized;
     cv::Mat result_resized;
 
-    Logger(CYAN, "Showing image");
+    // Logger(CYAN, "Showing image");
     if (!frame_thresh.empty()) {
-        Logger(CYAN, "Showing thresh in result");
+        // Logger(CYAN, "Showing thresh in result");
         cv::resize(frame_thresh, frame_thresh_resized, cv::Size(400, 400));
         cv::cvtColor(frame_thresh, frame_thresh, cv::COLOR_GRAY2BGR);
         cv::addWeighted(frame_thresh, 0.3, result, 1.0, 0.0, result);
     }
     if (!frame_canny.empty()) {
-        Logger(CYAN, "Showing canny in result");
+        // Logger(CYAN, "Showing canny in result");
         cv::resize(frame_canny, frame_canny_resized, cv::Size(400, 400));
         cv::cvtColor(frame_canny, frame_canny, cv::COLOR_GRAY2BGR);
         cv::addWeighted(frame_canny, 0.3, result, 1.0, 0.0, result);
     }
     if (!result.empty()) {
-        Logger(CYAN, "Showing result");
+        // Logger(CYAN, "Showing result");
         cv::resize(result, result_resized, cv::Size(400, 400));
         cv::imshow("result", result_resized);
     }
@@ -214,7 +214,7 @@ void Detect(cv::Mat frame)
 
 void ROI(cv::Mat& frame)
 {
-    Logger(CYAN, "Finding ROI");
+    // Logger(CYAN, "Finding ROI");
     cv::Mat frame_mask(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     cv::Mat frame_mask_far(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     std::vector<cv::Point> ROI;
@@ -621,7 +621,7 @@ std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI)
 
 std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y)
 {
-    Logger(CYAN, "Entering Sliding Windows Calculation");
+    // Logger(CYAN, "Entering Sliding Windows Calculation");
     std::vector<cv::Rect> windows;
     const int num_windows = 9;
     const int margin = 50;
@@ -703,7 +703,7 @@ std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, 
         in_points[i][1] = temp_y_min;
         in_points[i][3] = temp_y_max;
     }
-    Logger(CYAN, "Sliding windows equation finished");
+    // Logger(CYAN, "Sliding windows equation finished");
     return in_points;
 }
 
@@ -716,7 +716,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     cv::Mat frame_binary = frame.clone();
     mutex_binary_frame.unlock();
 
-    Logger(CYAN, "Processing Binary Stacking");
+    // Logger(CYAN, "Processing Binary Stacking");
     std::vector<cv::Vec2i> nonzero;
     cv::findNonZero(frame_binary, nonzero);
 
@@ -735,7 +735,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     cv::Mat binaryMask = (frame_binary > 0) / 255;
     cv::reduce(binaryMask, verticalSum, 0, cv::REDUCE_SUM, CV_32S);
 
-    std::cout << verticalSum << std::endl;
+    // std::cout << verticalSum << std::endl;
 
     const int mid_point = verticalSum.cols / 2.0;
     bool isZero = true;
@@ -760,17 +760,17 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
         }
     }
 
-    for (int i = 0; i < spike; i++) {
-        Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
-    }
+    // for (int i = 0; i < spike; i++) {
+    //     Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
+    // }
 
-    Logger(RED, "spike : %d", spike);
+    // Logger(RED, "spike : %d", spike);
 
     center_x_base.resize(spike);
 
     for (int i = 0; i < spike; i++) {
         CenterSpike(verticalSum, start[i], stop[i], center_x_base[i]);
-        Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
+        // Logger(BLUE, "center x[%d] : %d", i, center_x_base[i]);
         if (center_x_base[i] - center_x_base[i - 1] < 100 && i != 0) {
             center_x_final.pop_back();
             center_x_final.push_back((center_x_base[i] + center_x_base[i - 1]) / 2.0);
@@ -816,7 +816,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     // problem is used to debug if road target has problem not being able to identify new road target from prev x in new sliding windows
     problem = true;
 
-    Logger(CYAN, "Finding n-lines");
+    // Logger(CYAN, "Finding n-lines");
     if (spike_final == 3) {
         Logger(GREEN, "3 LINES DETECTED");
         road_target = 1;
@@ -947,7 +947,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     }
     // printf("x_target : %.f %.f || %.f %.f || %.f\n", x_target, y_target, line_SI[1][1], line_SI[1][0], (y_target - line_SI[1][1]) / line_SI[1][0]);
     if (spike_final > 0) {
-        Logger(CYAN, "Preparing publishing data");
+        // Logger(CYAN, "Preparing publishing data");
         // problem false indicating there is no problem in assigning road target
         //  if (!problem) {
         //      y_target = frame_binary.rows - 220;
@@ -1030,13 +1030,13 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
         // Logger(GREEN, "x_pub : %f y_pub : %f", lane.target_x_left, lane.target_y_left);
 
         pub_target.publish(lane);
-        Logger(CYAN, "Data has been published");
+        // Logger(CYAN, "Data has been published");
     }
 }
 
 void CenterSpike(cv::Mat frame, int start, int stop, int& index)
 {
-    Logger(CYAN, "Center spike equation");
+    // Logger(CYAN, "Center spike equation");
     int a = 0;
     int b = 0;
     int temp = 0;
@@ -1055,7 +1055,7 @@ void CenterSpike(cv::Mat frame, int start, int stop, int& index)
 
 void SlopeIntercept(cv::Vec4i& lines, double& slope, double& intercept)
 {
-    Logger(CYAN, "Slope intercept calculation");
+    // Logger(CYAN, "Slope intercept calculation");
     double x1 = lines[0];
     double y1 = lines[1];
     double x2 = lines[2];

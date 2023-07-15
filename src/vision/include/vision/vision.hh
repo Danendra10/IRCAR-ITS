@@ -31,7 +31,7 @@
 #define DEGREE 2
 
 //==Method
-#define edge_detection
+// #define edge_detection
 
 //============================================================
 

@@ -347,6 +347,10 @@ void KeepForward(general_data_ptr general_data)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
+    general_data->car_target.x = general_data->buffer_target_x;
+    general_data->car_target.y = general_data->buffer_target_y;
+
+    Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
     try {
         if (data_validator < 0b011)
             return;
@@ -356,7 +360,7 @@ void DecideCarTarget(general_data_ptr general_data)
         float left_obs_y = general_data->raw_obs_data[general_data->raw_obs_data.size() - 1].y;
         float obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
         float obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-        // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
+        // // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
         if (!general_data->obs_status)
             general_data->car_side = 0;
         else {
@@ -368,14 +372,30 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side) {
         case 10:
             // printf("TARGET KIRI\n");
-            general_data->car_target.x = general_data->car_target_left.x;
-            general_data->car_target.y = general_data->car_target_left.y;
+            if (general_data->left_available && general_data->middle_available) {
+                general_data->car_target.x = (general_data->car_target_left.x + general_data->car_target_middle.x / 2.0);
+                general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y / 2.0);
+            } else if (general_data->left_available) {
+                general_data->car_target.x = general_data->car_target_left.x + general_data->divider;
+                general_data->car_target.y = general_data->car_target_left.y;
+            } else if (general_data->middle_available) {
+                general_data->car_target.x = general_data->car_target_middle.x - general_data->divider;
+                general_data->car_target.y = general_data->car_target_middle.y;
+            }
             break;
 
         case 20:
             // printf("TARGET KANAN\n");
-            general_data->car_target.x = general_data->car_target_right.x;
-            general_data->car_target.y = general_data->car_target_right.y;
+            if (general_data->right_available && general_data->middle_available) {
+                general_data->car_target.x = (general_data->car_target_middle.x + general_data->car_target_middle.x / 2.0);
+                general_data->car_target.y = (general_data->car_target_middle.y + general_data->car_target_middle.y / 2.0);
+            } else if (general_data->right_available) {
+                general_data->car_target.x = general_data->car_target_right.x - general_data->divider;
+                general_data->car_target.y = general_data->car_target_right.y;
+            } else if (general_data->middle_available) {
+                general_data->car_target.x = general_data->car_target_middle.x + general_data->divider;
+                general_data->car_target.y = general_data->car_target_middle.y;
+            }
             break;
 
         default:
@@ -383,6 +403,8 @@ void DecideCarTarget(general_data_ptr general_data)
 
             break;
         }
+
+        Logger(BLUE, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
 
         // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
 

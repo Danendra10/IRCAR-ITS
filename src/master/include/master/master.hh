@@ -1,8 +1,8 @@
 #ifndef __MASTER_HH_
 #define __MASTER_HH_
 
-#include "ros/ros.h"
 #include "ros/package.h"
+#include "ros/ros.h"
 
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
@@ -15,16 +15,13 @@
 #include "msg_collection/RealPosition.h"
 #include "msg_collection/SlopeIntercept.h"
 
+#include "yaml-cpp/yaml.h"
 #include <exception>
+#include <iostream>
+#include <string>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <vector>
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <exception>
-#include "yaml-cpp/yaml.h"
-#include <iostream>
-#include <string>
 
 #include "entity/entity.hh"
 #include "logger/logger.h"
@@ -34,12 +31,12 @@
 
 using namespace std;
 
-typedef struct general_data_tag
-{
+typedef struct general_data_tag {
     Velocity car_vel;
     CarPose car_pose;
     Target car_target;
     Target car_target_left;
+    Target car_target_middle;
     Target car_target_right;
     CarData car_data;
 
@@ -70,6 +67,14 @@ typedef struct general_data_tag
     uint8_t signal_stop;
 
     bool can_be_intercepted;
+    bool left_available;
+    bool middle_available;
+    bool right_available;
+
+    float buffer_target_x;
+    float buffer_target_y;
+
+    int divider;
 
 } general_data_t, *general_data_ptr;
 
@@ -87,7 +92,7 @@ uint8_t data_validator = 0b000;
 
 //==============================================================================
 
-const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
+const string commands[] = { "stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop" };
 
 //==============================================================================
 
@@ -97,21 +102,19 @@ extern bool linear_negative;
 extern bool angular_negative;
 //==============================================================================
 
-void CllbckTim60Hz(const ros::TimerEvent &event);
+void CllbckTim60Hz(const ros::TimerEvent& event);
 
-void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
+void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr& msg)
 {
     general_instance.raw_obs_data.clear();
     general_instance.obs_data.clear();
 
-    if (msg->x.size() == 0)
-    {
+    if (msg->x.size() == 0) {
         general_instance.obs_status = false;
         return;
     }
 
-    for (int i = 0; i < msg->x.size(); i++)
-    {
+    for (int i = 0; i < msg->x.size(); i++) {
         Obstacles raw_obs;
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
@@ -133,7 +136,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     data_validator |= 0b010;
 }
 
-void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
+void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr& msg, general_data_ptr general_instance)
 {
     // posisi sumbu x
     general_instance->car_data.rear_left_wheel_joint = msg->position[0];
@@ -146,60 +149,100 @@ void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data
     // general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
 }
 
-void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
+void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr& msg)
 {
     general_instance.car_pose.x = msg->x;
     general_instance.car_pose.y = msg->y;
     general_instance.car_pose.th = msg->z;
 }
 
-void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
+void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
 {
 
-    general_instance.car_target.x = msg->target_x;
-    general_instance.car_target.y = msg->target_y;
-    general_instance.vision_data_lane.push_back(cv::Vec4i(msg->left_lane_x_top, msg->left_lane_y_top, msg->left_lane_y_bottom, msg->left_lane_y_bottom));
-    general_instance.vision_data_lane.push_back(cv::Vec4i(msg->middle_lane_x_top, msg->middle_lane_y_top, msg->middle_lane_y_bottom, msg->middle_lane_y_bottom));
-    general_instance.vision_data_lane.push_back(cv::Vec4i(msg->right_lane_x_top, msg->right_lane_y_top, msg->right_lane_y_bottom, msg->right_lane_y_bottom));
-    // general_instance.can_be_intercepted = msg->can_be_intercepted;
-    if (msg->can_be_intercepted == true && general_instance.obs_status == true)
-    {
-        float dist_x_left = 800 - msg->left_lane_y_top;
-        float dist_y_left = msg->left_lane_x_top - 400;
-        float dist_x_right = 800 - msg->right_lane_y_top;
-        float dist_y_right = msg->right_lane_x_top - 400;
-        float dist_x_middle = 800 - msg->middle_lane_y_top;
-        float dist_y_middle = msg->middle_lane_x_top - 400;
+    general_instance.buffer_target_x = msg->target_x;
+    general_instance.buffer_target_y = msg->target_y;
+    general_instance.can_be_intercepted = msg->can_be_intercepted;
 
-        float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
-        float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
-        float distance_middle = pixel_to_real(sqrt(pow(dist_x_middle, 2) + pow(dist_y_middle, 2)));
-        float angle_diff_left = atan(dist_x_left / dist_y_left);
-        float angle_diff_right = atan(dist_x_right / dist_y_right);
-        float angle_diff_middle = atan(dist_x_middle / dist_y_middle);
+    general_instance.left_available = false;
+    general_instance.middle_available = false;
+    general_instance.right_available = false;
 
-        if (dist_y_left < 0)
-            angle_diff_left += DEG2RAD(180);
-        if (dist_y_right < 0)
-            angle_diff_right += DEG2RAD(180);
-        if (dist_y_middle < 0)
-            angle_diff_middle += DEG2RAD(180);
-
-        general_instance.car_target_left.x = (distance_left * sin(angle_diff_left) + distance_middle * sin(angle_diff_middle)) / 2.0;
-        general_instance.car_target_left.y = (distance_left * cos(angle_diff_left) + distance_middle * cos(angle_diff_middle)) / 2.0;
-        general_instance.car_target_right.x = (distance_right * sin(angle_diff_right) + distance_middle * sin(angle_diff_middle)) / 2.0;
-        general_instance.car_target_right.y = (distance_right * cos(angle_diff_right) + distance_middle * cos(angle_diff_middle)) / 2.0;
+    if (msg->left_lane_x_top != 0
+        && msg->left_lane_x_bottom != 0
+        && msg->left_lane_y_top != 0
+        && msg->left_lane_y_bottom != 0) {
+        general_instance.left_available = true;
     }
+
+    if (msg->middle_lane_x_top != 0
+        && msg->middle_lane_x_bottom != 0
+        && msg->middle_lane_y_top != 0
+        && msg->middle_lane_y_bottom != 0) {
+        general_instance.middle_available = true;
+    }
+
+    if (msg->right_lane_x_top != 0
+        && msg->right_lane_x_bottom != 0
+        && msg->right_lane_y_top != 0
+        && msg->right_lane_y_bottom != 0) {
+        general_instance.right_available = true;
+    }
+
+    // if (general_instance.left_available)
+    //     Logger(YELLOW, "Left Available");
+    // if (general_instance.middle_available)
+    //     Logger(YELLOW, "Middle Available");
+    // if (general_instance.right_available)
+    //     Logger(YELLOW, "Right Available");
+
+    float dist_x_left = 600;
+    float dist_y_left = (msg->left_lane_x_bottom + msg->left_lane_x_top) / 2.0 - 400;
+    float dist_x_middle = 600;
+    float dist_y_middle = (msg->middle_lane_x_bottom + msg->middle_lane_x_top) / 2.0 - 400;
+    float dist_x_right = 600;
+    float dist_y_right = (msg->right_lane_x_bottom + msg->right_lane_x_top) / 2.0 - 400;
+
+    float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
+    float distance_middle = pixel_to_real(sqrt(pow(dist_x_middle, 2) + pow(dist_y_middle, 2)));
+    float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
+    float angle_diff_left = atan(dist_x_left / dist_y_left);
+    float angle_diff_middle = atan(dist_x_middle / dist_y_middle);
+    float angle_diff_right = atan(dist_x_right / dist_y_right);
+
+    if (dist_y_left < 0)
+        angle_diff_left += DEG2RAD(180);
+    if (dist_y_right < 0)
+        angle_diff_right += DEG2RAD(180);
+    if (dist_y_middle < 0)
+        angle_diff_middle += DEG2RAD(180);
+
+    general_instance.car_target_left.x = distance_left * sin(angle_diff_left);
+    general_instance.car_target_left.y = distance_left * cos(angle_diff_left);
+    general_instance.car_target_middle.x = distance_middle * sin(angle_diff_middle);
+    general_instance.car_target_middle.y = distance_middle * cos(angle_diff_middle);
+    general_instance.car_target_right.x = distance_right * sin(angle_diff_right);
+    general_instance.car_target_right.y = distance_right * cos(angle_diff_right);
+
+    // Logger(MAGENTA, "left x : %f left y : %f", dist_x_left, dist_y_left);
+    // Logger(MAGENTA, "middle x : %f middle y : %f", dist_x_middle, dist_y_middle);
+    // Logger(MAGENTA, "right x : %f right y : %f", dist_x_right, dist_y_right);
+
+    if (general_instance.left_available
+        && general_instance.middle_available
+        && general_instance.right_available) {
+        general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 3.0);
+    }
+
     data_validator |= 0b001;
 }
 
-void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
+void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr& msg)
 {
     general_instance.sign_type = msg->data;
     data_validator |= 0b100;
 }
 
-void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
+void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr& msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
     // printf("signal stop %d\n", general_instance->signal_stop);
@@ -227,8 +270,7 @@ int8_t kbhit()
     static const int STDIN = 0;
     static bool initialized = false;
 
-    if (!initialized)
-    {
+    if (!initialized) {
         termios term;
         tcgetattr(STDIN, &term);
         term.c_lflag &= ~ICANON;
