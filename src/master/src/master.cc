@@ -314,32 +314,32 @@ void KeepForward(general_data_ptr general_data)
 
     // int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
 
-    if (size_of_middle_lane_close_to_robot == -1) {
-        // keep forward
-        general_data->car_target_left.x = general_data->car_pose.x + 0.5;
-        general_data->car_target_left.y = general_data->car_pose.y;
-        general_data->car_target_left.th = general_data->car_pose.th;
-    }
+    // if (size_of_middle_lane_close_to_robot == -1) {
+    //     // keep forward
+    //     general_data->car_target_left.x = general_data->car_pose.x + 0.5;
+    //     general_data->car_target_left.y = general_data->car_pose.y;
+    //     general_data->car_target_left.th = general_data->car_pose.th;
+    // }
 
-    // Check if the robot's angle is linear with the angle of the lane
-    if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
-        // The robot's angle is linear with the angle of the lane, keep moving forward
-        general_data->car_target_left.x = general_data->car_pose.x;
-        general_data->car_target_left.y = general_data->car_pose.y;
-        general_data->car_target_left.th = general_data->car_pose.th;
-    } else {
-        // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
-        if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0)) {
-            general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
-            general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
-            general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
-        } else {
-            // The robot's angle is not linear and no specific side is determined, keep moving forward
-            general_data->car_target_left.x = general_data->car_pose.x;
-            general_data->car_target_left.y = general_data->car_pose.y;
-            general_data->car_target_left.th = general_data->car_pose.th;
-        }
-    }
+    // // Check if the robot's angle is linear with the angle of the lane
+    // if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
+    //     // The robot's angle is linear with the angle of the lane, keep moving forward
+    //     general_data->car_target_left.x = general_data->car_pose.x;
+    //     general_data->car_target_left.y = general_data->car_pose.y;
+    //     general_data->car_target_left.th = general_data->car_pose.th;
+    // } else {
+    //     // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
+    //     if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0)) {
+    //         general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
+    //         general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
+    //         general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
+    //     } else {
+    //         // The robot's angle is not linear and no specific side is determined, keep moving forward
+    //         general_data->car_target_left.x = general_data->car_pose.x;
+    //         general_data->car_target_left.y = general_data->car_pose.y;
+    //         general_data->car_target_left.th = general_data->car_pose.th;
+    //     }
+    // }
 
     // Call the RobotMovement function with the updated target to keep the car moving forward
     RobotMovement(general_data);
@@ -448,21 +448,15 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     float buffer_linear;
     float buffer_angular;
-    if (linear_negative)
-    {
+    if (linear_negative) {
         buffer_linear = -motion_return.linear;
-    }
-    else
-    {
+    } else {
         buffer_linear = motion_return.linear;
     }
 
-    if (angular_negative)
-    {
+    if (angular_negative) {
         buffer_angular = -motion_return.angular;
-    }
-    else
-    {
+    } else {
         buffer_angular = motion_return.angular;
     }
     vel_msg.linear.x = buffer_linear;

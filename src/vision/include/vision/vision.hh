@@ -16,6 +16,7 @@
 #include "sensor_msgs/Image.h"
 #include "std_msgs/Float32.h"
 #include "vision/LaneDetect.hh"
+#include <boost/thread/mutex.hpp>
 #include <chrono>
 #include <cv_bridge/cv_bridge.h>
 #include <ros/ros.h>
@@ -30,7 +31,7 @@
 #define DEGREE 2
 
 //==Method
-// #define edge_detection
+#define edge_detection
 
 //============================================================
 
@@ -58,6 +59,7 @@ Mat raw_frame = Mat::zeros(800, 800, CV_8UC3);
 //============================================================
 
 boost::mutex mutex_raw_frame;
+boost::mutex mutex_binary_frame;
 
 //============================================================
 
@@ -106,15 +108,15 @@ PolynomialRegression polynom(DEGREE);
 
 //============================================================
 
-void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
-void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
-void SubCmdVision(const msg_collection::CmdVision::ConstPtr &msg);
+void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr& msg);
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr& msg);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr& msg);
+void SubCmdVision(const msg_collection::CmdVision::ConstPtr& msg);
 
 //============================================================
 
-void Tim30HzCllbck(const ros::TimerEvent &event);
-void click_event(int event, int x, int y, int flags, void *params);
+void Tim30HzCllbck(const ros::TimerEvent& event);
+void click_event(int event, int x, int y, int flags, void* params);
 
 //============================================================
 
@@ -122,16 +124,16 @@ void Init();
 void record();
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat &frame);
-void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line);
-void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
-void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
-void SlopeIntercept(cv::Vec4i &lines, double &slope, double &intercept);
+void ROI(cv::Mat& frame);
+void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line);
+void Display(cv::Mat& frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines);
+void SlopeIntercept(cv::Vec4i& lines, double& slope, double& intercept);
 cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
 std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
-std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y);
-void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst);
-void CenterSpike(cv::Mat frame, int start, int stop, int &index);
+std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y);
+void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst);
+void CenterSpike(cv::Mat frame, int start, int stop, int& index);
 
 //============================================================
 
