@@ -9,6 +9,8 @@ typedef struct Velocity_t
 };
 
 Velocity_t motion_return;
+bool linear_negative;
+bool angular_negative;
 
 extern PID_Const pid_linear_const;
 

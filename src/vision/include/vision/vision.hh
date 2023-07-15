@@ -29,6 +29,9 @@
 
 #define DEGREE 2
 
+//==Method
+// #define edge_detection
+
 //============================================================
 
 using namespace std;
@@ -117,28 +120,12 @@ void click_event(int event, int x, int y, int flags, void *params);
 
 void Init();
 void record();
-Mat ToWrappedFrame(Mat raw_frame);
-vector<Point> GetPoints(Mat wrapped_frame);
-std::vector<cv::Point> GetLeftPoints(const std::vector<cv::Point> &points);
-std::vector<cv::Point> GetRightPoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddlePoints(const std::vector<cv::Point> &points, int frameWidth);
-std::vector<cv::Point> GetMiddleOfLeftRoad(const std::vector<cv::Point> &leftPoints, const std::vector<cv::Point> &middlePoints);
-std::vector<cv::Point> GetMiddleOfRightRoad(const std::vector<cv::Point> &rightPoints, const std::vector<cv::Point> &middlePoints);
-
-Mat DrawObsPoints(const vector<ObstaclesPtr> &points);
-
-std::vector<cv::Vec4i> GetLeftLines(const std::vector<cv::Vec4i> &lines);
-std::vector<cv::Vec4i> GetRightLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddleLines(const std::vector<cv::Vec4i> &lines, int frameWidth);
-std::vector<cv::Vec4i> GetMiddlePoints(const std::vector<cv::Vec4i> &leftLines, const std::vector<cv::Vec4i> &middleLines);
-cv::Vec4i ExtrapolateLine(const cv::Vec4i &line, int minY, int maxY);
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat &frame, cv::Mat &frame_faraway);
+void ROI(cv::Mat &frame);
 void Hough(cv::Mat frame, std::vector<cv::Vec4i> &line);
 void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
 void Average(cv::Mat frame, std::vector<cv::Vec4i> &lines);
-void Average_BinaryStacking(cv::Mat frame, cv::Vec4i &lines);
 void SlopeIntercept(cv::Vec4i &lines, double &slope, double &intercept);
 cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
 std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
