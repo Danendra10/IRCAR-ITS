@@ -45,14 +45,14 @@ extern "C"
 
     float PIDCalculate(PID_t *pid, float error, float minmax)
     {
-        std::chrono::high_resolution_clock::time_point t_now = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed_seconds = t_now - pid->last_call;
-        if (elapsed_seconds.count() > 2)
-        {
-            pid->integral = 0;
-            pid->last_error = 0;
-        }
-        pid->last_call = std::chrono::high_resolution_clock::now();
+        // std::chrono::high_resolution_clock::time_point t_now = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double> elapsed_seconds = t_now - pid->last_call;
+        // if (elapsed_seconds.count() > 2)
+        // {
+        //     pid->integral = 0;
+        //     pid->last_error = 0;
+        // }
+        // pid->last_call = std::chrono::high_resolution_clock::now();
 
         pid->min_out = pid->min_integral = -minmax;
         pid->max_out = pid->max_integral = minmax;

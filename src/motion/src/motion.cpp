@@ -1,4 +1,5 @@
 #include "motion/motion.hh"
+#include <cstdio>
 
 void ResetVel(Velocity_t *vel_ret)
 {
@@ -35,14 +36,30 @@ void MotionControl(float linear_vel, float angular_vel, Velocity_t *vel_ret)
     static PID_t linear_pid;
     static PID_t angular_pid;
 
+    linear_negative = false;
+    angular_negative = false;
+
+    float output_linear, output_angular;
+
+    if (linear_vel < 0)
+    {
+        linear_negative = true;
+        linear_vel *= -1.0;
+    }
+    if (angular_vel < 0)
+    {
+        angular_negative = true;
+        angular_vel *= -1.0;
+    }
+
     PIDInit(&linear_pid, pid_linear_const);
     PIDInit(&angular_pid, pid_angular_const);
 
     float error_vel_linear = linear_vel - vel_ret->linear;
     float error_vel_angular = angular_vel - vel_ret->angular;
 
-    float output_linear = PIDCalculate(&linear_pid, error_vel_linear, linear_vel);
-    float output_angular = PIDCalculate(&angular_pid, error_vel_angular, angular_vel);
+    output_linear = PIDCalculate(&linear_pid, error_vel_linear, linear_vel);
+    output_angular = PIDCalculate(&angular_pid, error_vel_angular, angular_vel);
 
     vel_ret->linear = output_linear;
     vel_ret->angular = output_angular;

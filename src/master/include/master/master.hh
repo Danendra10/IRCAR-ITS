@@ -93,7 +93,8 @@ const string commands[] = {"stop", "right", "left", "forward", "no entry", "righ
 
 extern PID_Const pid_linear_const;
 extern PID_Const pid_angular_const;
-
+extern bool linear_negative;
+extern bool angular_negative;
 //==============================================================================
 
 void CllbckTim60Hz(const ros::TimerEvent &event);

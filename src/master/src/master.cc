@@ -94,19 +94,19 @@ void SimulatorState()
 {
     switch (general_instance.main_state.value) {
     case FORWARD:
-        MoveRobot(2, 0);
+        MoveRobot(4, 0);
         break;
 
     case BACKWARD:
-        MoveRobot(-1, 0);
+        MoveRobot(-4, 0);
         break;
 
     case TURN_LEFT:
-        MoveRobot(1, 1);
+        MoveRobot(3, 3);
         break;
 
     case TURN_RIGHT:
-        MoveRobot(1, -1);
+        MoveRobot(3, -3);
         break;
 
     case AUTONOMOUS:
@@ -420,7 +420,7 @@ void RobotMovement(general_data_ptr data)
     // // PURE PURSUIT
     float ld = 10;
 
-    ROS_INFO("TARGET : %f %f", data->car_target.x, data->car_target.y);
+    // ROS_INFO("TARGET : %f %f", data->car_target.x, data->car_target.y);
 
     // from rear wheel
     float dist_x = data->car_target.x + 3.8;
@@ -432,26 +432,41 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    if (abs(delta) < 0.05)
-    {
-        vel_linear = 12;
-        vel_angular = 0;
-    else {
-        if (data->car_target.y < 0)
-            // vel_angular = RAD2DEG(delta) / 16;
-            vel_angular = RAD2DEG(delta) * vel_linear / 0.1;
-        else
-            vel_angular = -1 * RAD2DEG(delta) * vel_linear / 0.1;
-        // vel_angular = -1 * RAD2DEG(delta) / 16;
-    }
+    vel_linear = 9;
+    if (data->obs_status == true)
+        vel_linear *= 0.6;
+    if (data->car_target.y < 0)
+        vel_angular = (delta)*vel_linear / 0.2;
+    else
+        vel_angular = -1 * (delta)*vel_linear / 0.2;
+
     MotionControl(vel_linear, vel_angular);
 }
 
 void TransmitData(general_data_ptr data)
 {
     geometry_msgs::Twist vel_msg;
-    vel_msg.linear.x = motion_return.linear;
-    vel_msg.angular.z = motion_return.angular;
+    float buffer_linear;
+    float buffer_angular;
+    if (linear_negative)
+    {
+        buffer_linear = -motion_return.linear;
+    }
+    else
+    {
+        buffer_linear = motion_return.linear;
+    }
+
+    if (angular_negative)
+    {
+        buffer_angular = -motion_return.angular;
+    }
+    else
+    {
+        buffer_angular = motion_return.angular;
+    }
+    vel_msg.linear.x = buffer_linear;
+    vel_msg.angular.z = buffer_angular;
     data->pub_car_vel.publish(vel_msg);
 
     //============
