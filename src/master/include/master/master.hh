@@ -74,6 +74,9 @@ typedef struct general_data_tag {
     float buffer_target_x;
     float buffer_target_y;
 
+    float spacer_real_x;
+    float spacer_real_y;
+
     int divider;
 
 } general_data_t, *general_data_ptr;
@@ -194,21 +197,26 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     //     Logger(YELLOW, "Middle Available");
     // if (general_instance.right_available)
     //     Logger(YELLOW, "Right Available");
-
-    float dist_x_left = 600;
+    float spacer_x = 800 - 600;
+    float spacer_y = 50;
+    float dist_x_left = 800 - 600;
     float dist_y_left = (msg->left_lane_x_bottom + msg->left_lane_x_top) / 2.0 - 400;
-    float dist_x_middle = 600;
+    float dist_x_middle = 800 - 600;
     float dist_y_middle = (msg->middle_lane_x_bottom + msg->middle_lane_x_top) / 2.0 - 400;
-    float dist_x_right = 600;
+    float dist_x_right = 800 - 600;
     float dist_y_right = (msg->right_lane_x_bottom + msg->right_lane_x_top) / 2.0 - 400;
 
+    float distance_spacer = pixel_to_real(sqrt(pow(spacer_x, 2) + pow(spacer_y, 2)));
     float distance_left = pixel_to_real(sqrt(pow(dist_x_left, 2) + pow(dist_y_left, 2)));
     float distance_middle = pixel_to_real(sqrt(pow(dist_x_middle, 2) + pow(dist_y_middle, 2)));
     float distance_right = pixel_to_real(sqrt(pow(dist_x_right, 2) + pow(dist_y_right, 2)));
+    float angle_diff_spacer = atan(spacer_x / spacer_y);
     float angle_diff_left = atan(dist_x_left / dist_y_left);
     float angle_diff_middle = atan(dist_x_middle / dist_y_middle);
     float angle_diff_right = atan(dist_x_right / dist_y_right);
 
+    if (spacer_y < 0)
+        angle_diff_spacer += DEG2RAD(180);
     if (dist_y_left < 0)
         angle_diff_left += DEG2RAD(180);
     if (dist_y_right < 0)
@@ -216,12 +224,21 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     if (dist_y_middle < 0)
         angle_diff_middle += DEG2RAD(180);
 
+    general_instance.spacer_real_x = distance_spacer * sin(angle_diff_spacer);
+    general_instance.spacer_real_y = distance_spacer * cos(angle_diff_spacer);
     general_instance.car_target_left.x = distance_left * sin(angle_diff_left);
     general_instance.car_target_left.y = distance_left * cos(angle_diff_left);
     general_instance.car_target_middle.x = distance_middle * sin(angle_diff_middle);
     general_instance.car_target_middle.y = distance_middle * cos(angle_diff_middle);
     general_instance.car_target_right.x = distance_right * sin(angle_diff_right);
     general_instance.car_target_right.y = distance_right * cos(angle_diff_right);
+
+    // general_instance.car_target_left.x = dist_x_left;
+    // general_instance.car_target_left.y = dist_y_left;
+    // general_instance.car_target_middle.x = dist_x_middle;
+    // general_instance.car_target_middle.y = dist_y_middle;
+    // general_instance.car_target_right.x = dist_x_right;
+    // general_instance.car_target_right.y = dist_y_right;
 
     // Logger(MAGENTA, "left x : %f left y : %f", dist_x_left, dist_y_left);
     // Logger(MAGENTA, "middle x : %f middle y : %f", dist_x_middle, dist_y_middle);
@@ -230,7 +247,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     if (general_instance.left_available
         && general_instance.middle_available
         && general_instance.right_available) {
-        general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 3.0);
+        general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
     }
 
     data_validator |= 0b001;
