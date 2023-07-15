@@ -377,7 +377,7 @@ void DecideCarTarget(general_data_ptr general_data)
             obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
         }
 
-        ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
+        // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
         if (!general_data->obs_status)
             general_data->car_side = 0;
         else {
@@ -442,6 +442,18 @@ void DecideCarTarget(general_data_ptr general_data)
         std::cout << "Error message: " << e.what() << std::endl;
     } catch (...) {
         ROS_ERROR_STREAM("Error caught on line: " << __LINE__);
+    }
+
+    if (general_data->obs_status) {
+        general_data->prev_x = general_data->car_pose.x;
+        general_data->prev_y = general_data->car_pose.y;
+        general_data->last_lidar_status = true;
+    } else if (!general_data->obs_status && general_data->last_lidar_status) {
+        general_data->car_target.y = 0;
+        Logger(RED, "TEMP FORWARD");
+        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 2) {
+            general_data->last_lidar_status = false;
+        }
     }
 }
 

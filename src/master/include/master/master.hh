@@ -77,6 +77,11 @@ typedef struct general_data_tag {
     float spacer_real_x;
     float spacer_real_y;
 
+    float prev_x;
+    float prev_y;
+
+    bool last_lidar_status;
+
     int divider;
 
 } general_data_t, *general_data_ptr;
@@ -198,7 +203,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     // if (general_instance.right_available)
     //     Logger(YELLOW, "Right Available");
     float spacer_x = 800 - 600;
-    float spacer_y = 50;
+    float spacer_y = 30;
     float dist_x_left = 800 - 600;
     float dist_y_left = (msg->left_lane_x_bottom + msg->left_lane_x_top) / 2.0 - 400;
     float dist_x_middle = 800 - 600;
