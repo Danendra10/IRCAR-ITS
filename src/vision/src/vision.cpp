@@ -23,6 +23,7 @@ int main(int argc, char** argv)
     Init();
     LogParams();
 
+    NH.getParam("is_urban", is_urban);
     tim_30hz = NH.createTimer(ros::Duration(1.0 / 30.0), Tim30HzCllbck);
     sub_raw_frame = IT.subscribe("/catvehicle/camera_front/image_raw_front", 1, SubRawFrameCllbck);
     sub_odom = NH.subscribe("/catvehicle/odom", 1, SubOdomRaw);
@@ -168,7 +169,11 @@ void Detect(cv::Mat frame)
 
 #ifndef edge_detection
     //==Option Threshold
-    cv::threshold(frame_gray, frame_thresh, 55, 255, cv::THRESH_BINARY);
+    if (is_urban) {
+        cv::threshold(frame_gray, frame_thresh, 130, 255, cv::THRESH_BINARY);
+    } else {
+        cv::threshold(frame_gray, frame_thresh, 55, 255, cv::THRESH_BINARY);
+    }
     erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     ROI(frame_thresh);
@@ -219,12 +224,21 @@ void ROI(cv::Mat& frame)
     cv::Mat frame_mask_far(frame.rows, frame.cols, CV_8UC1, cv::Scalar(0));
     std::vector<cv::Point> ROI;
 
-    ROI.push_back(cv::Point(270, 750)); // bottom left
-    ROI.push_back(cv::Point(530, 750)); // bottom right
-    ROI.push_back(cv::Point(700, 550));
-    ROI.push_back(cv::Point(700, 500)); // top right
-    ROI.push_back(cv::Point(100, 500)); // top left
-    ROI.push_back(cv::Point(100, 550));
+    if (is_urban) {
+        ROI.push_back(cv::Point(270, 750)); // bottom left
+        ROI.push_back(cv::Point(530, 750)); // bottom right
+        ROI.push_back(cv::Point(600, 670));
+        ROI.push_back(cv::Point(600, 500)); // top right
+        ROI.push_back(cv::Point(200, 500)); // top left
+        ROI.push_back(cv::Point(200, 670));
+    } else {
+        ROI.push_back(cv::Point(270, 750)); // bottom left
+        ROI.push_back(cv::Point(530, 750)); // bottom right
+        ROI.push_back(cv::Point(700, 550));
+        ROI.push_back(cv::Point(700, 500)); // top right
+        ROI.push_back(cv::Point(100, 500)); // top left
+        ROI.push_back(cv::Point(100, 550));
+    }
 
     std::vector<cv::Point> ROI_left;
 
@@ -716,7 +730,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     cv::Mat frame_binary = frame.clone();
     mutex_binary_frame.unlock();
 
-    // Logger(CYAN, "Processing Binary Stacking");
+    Logger(CYAN, "Processing Binary Stacking");
     std::vector<cv::Vec2i> nonzero;
     cv::findNonZero(frame_binary, nonzero);
 
@@ -736,6 +750,12 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     cv::reduce(binaryMask, verticalSum, 0, cv::REDUCE_SUM, CV_32S);
 
     // std::cout << verticalSum << std::endl;
+    if (binaryMask.empty()) {
+        Logger(RED, "binaryMask is empty");
+    }
+    if (verticalSum.empty()) {
+        Logger(RED, "verticalSum is empty");
+    }
 
     const int mid_point = verticalSum.cols / 2.0;
     bool isZero = true;
@@ -760,9 +780,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
         }
     }
 
-    // for (int i = 0; i < spike; i++) {
-    //     Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
-    // }
+    for (int i = 0; i < spike; i++) {
+        Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
+    }
 
     // Logger(RED, "spike : %d", spike);
 
@@ -783,6 +803,8 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
         // cv::circle(frame_dst, cv::Point(center_x_base[i], 720), 3, cv::Scalar(255, 0, 0), 10);
         // cv::circle(frame_dst, cv::Point(center_x_base[i], 460), 3, cv::Scalar(255, 0, 0), 10);
     }
+
+    Logger(CYAN, "spike : %d | counter : %d", spike, counter);
 
     spike_final = spike - counter;
 
@@ -816,7 +838,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst)
     // problem is used to debug if road target has problem not being able to identify new road target from prev x in new sliding windows
     problem = true;
 
-    // Logger(CYAN, "Finding n-lines");
+    Logger(CYAN, "Finding n-lines");
     if (spike_final == 3) {
         Logger(GREEN, "3 LINES DETECTED");
         road_target = 1;

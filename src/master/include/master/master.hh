@@ -9,6 +9,7 @@
 #include "sensor_msgs/JointState.h"
 #include "std_msgs/UInt16.h"
 #include "std_msgs/UInt8.h"
+#include "std_msgs/String.h"
 
 #include "msg_collection/CmdVision.h"
 #include "msg_collection/Obstacles.h"
@@ -53,6 +54,7 @@ typedef struct general_data_tag
     ros::Subscriber sub_car_data;
     ros::Subscriber sub_lidar_data;
     ros::Subscriber sub_stop_signal;
+    ros::Subscriber sub_vision_road_sign_py;
     ros::Timer tim_60_hz;
 
     std::vector<cv::Vec4i> vision_data_lane;
@@ -84,6 +86,8 @@ typedef struct general_data_tag
     bool last_lidar_status;
 
     int divider;
+
+    String road_sign_from_model;
 
 } general_data_t, *general_data_ptr;
 
@@ -249,7 +253,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 
     if (general_instance.left_available && general_instance.middle_available && general_instance.right_available)
     {
-        general_instance.divider = (abs(general_instance.car_target_right.y - general_instance.car_target_left.y) / 4.0);
+        general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
     }
 }
 
@@ -263,6 +267,12 @@ void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr ge
 {
     general_instance->signal_stop = msg->data;
     // printf("signal stop %d\n", general_instance->signal_stop);
+}
+
+void CllbckSubVisionRoadSignPy(const std_msgs::StringConstPtr &msg, general_data_ptr general_instance)
+{
+    general_instance->road_sign_from_model = msg->data;
+    printf("road sign from model %s\n", general_instance->road_sign_from_model.c_str());
 }
 
 //==============================================================================

@@ -28,9 +28,6 @@ int main(int argc, char **argv)
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
-    /**
-     * TODO: No data being published @hernanda16
-     */
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
@@ -399,7 +396,7 @@ void DecideCarTarget(general_data_ptr general_data)
 
             if (obs_from_left_target > obs_from_right_target)
                 general_data->car_side = 10;
-            else if (obs_from_left_target < obs_from_right_target)
+            else if ((obs_from_right_target - obs_from_left_target) > 0.01)
                 general_data->car_side = 20;
         }
 

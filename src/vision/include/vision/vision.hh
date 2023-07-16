@@ -32,6 +32,8 @@
 
 //==Method
 // #define edge_detection
+#define race
+bool is_urban;
 
 //============================================================
 

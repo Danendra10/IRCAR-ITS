@@ -29,16 +29,19 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-
+catkin_install_python(PROGRAMS
+  scripts/vision.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 add_executable(vision_cpp src/vision.cpp)
 target_link_libraries(vision_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
 
+add_executable(vision_urban src/vision_urban.cpp)
+target_link_libraries(vision_urban ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
+
 add_executable(lidar src/lidar.cpp)
 target_link_libraries(lidar ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib)
-
-add_executable(anderdevelop_cpp src/anderdevelop.cpp)
-target_link_libraries(anderdevelop_cpp ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} entity_lib math_lib logger_lib)
 
 add_executable(road_sign_detector src/road_sign_detector.cpp)
 target_link_libraries(road_sign_detector ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAML_CPP_LIBRARIES} entity_lib math_lib logger_lib)
