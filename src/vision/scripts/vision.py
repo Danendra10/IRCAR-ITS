@@ -44,6 +44,7 @@ def callback(image_msg):
         closest_x_2 = 0
         closest_y_1 = 0
         closest_y_2 = 0
+        scores = results['confidence']
         for index, row in results.iterrows():
             x1 = int(row['xmin'])
             y1 = int(row['ymin'])
@@ -57,6 +58,7 @@ def callback(image_msg):
                 closest_x_2 = x2
                 closest_y_1 = y1
                 closest_y_2 = y2
+                scores = row['confidence']
 
         area_of_boundary_box = (closest_x_2 - closest_x_1) * \
             (closest_y_2 - closest_y_1)
@@ -65,7 +67,7 @@ def callback(image_msg):
                      (closest_x_2, closest_y_2), (0, 0, 255), 2)
         cv.putText(image_mat, closest_sign, (closest_x_1, closest_y_1),
                    cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        cv.putText(image_mat, str(area_of_boundary_box), (closest_x_1,
+        cv.putText(image_mat, str(scores), (closest_x_1,
                    closest_y_1 + 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         print(closest_sign)
 
@@ -94,7 +96,7 @@ def init_vision():
     sys.path.append(package_path)  # Add the package directory to sys.path
 
     model_name = 'best_sign.pt'
-    model_path = package_path + '/' + model_name
+    model_path = package_path + '/models/' + model_name
     print(model_path)
 
     model = load_model(model_path)
@@ -105,14 +107,14 @@ def load_model(path):
     return model
 
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     try:
         rospy.init_node('vision')
         init_vision()
         sub_image = rospy.Subscriber(
             '/catvehicle/camera_front/image_raw_front', Image, callback)
         pub_road_sing_cmd = rospy.Publisher(
-            '/catvehicle/road_sign_cmd', String, queue_size=10)
+            '/vision/road_sign_cmd', String, queue_size=10)
         rospy.spin()
 
     except rospy.ROSInterruptException:

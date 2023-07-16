@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   motion
   geometry_msgs
   msg_collection
+  nav_msgs
 )
 
 find_package(OpenCV REQUIRED)
@@ -30,3 +31,6 @@ include_directories(
 
 add_executable(master src/master.cc)
 target_link_libraries(master ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAML_CPP_LIBRARIES} entity_lib motion_lib logger_lib math_lib)
+
+add_executable(master_urban src/master_urban.cc)
+target_link_libraries(master_urban ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAML_CPP_LIBRARIES} entity_lib motion_lib logger_lib math_lib)

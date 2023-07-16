@@ -9,6 +9,7 @@
 #include "sensor_msgs/JointState.h"
 #include "std_msgs/UInt16.h"
 #include "std_msgs/UInt8.h"
+#include "std_msgs/String.h"
 
 #include "msg_collection/CmdVision.h"
 #include "msg_collection/Obstacles.h"
@@ -31,7 +32,8 @@
 
 using namespace std;
 
-typedef struct general_data_tag {
+typedef struct general_data_tag
+{
     Velocity car_vel;
     CarPose car_pose;
     Target car_target;
@@ -52,6 +54,7 @@ typedef struct general_data_tag {
     ros::Subscriber sub_car_data;
     ros::Subscriber sub_lidar_data;
     ros::Subscriber sub_stop_signal;
+    ros::Subscriber sub_vision_road_sign_py;
     ros::Timer tim_60_hz;
 
     std::vector<cv::Vec4i> vision_data_lane;
@@ -84,6 +87,8 @@ typedef struct general_data_tag {
 
     int divider;
 
+    String road_sign_from_model;
+
 } general_data_t, *general_data_ptr;
 
 //==============================================================================
@@ -100,7 +105,7 @@ uint8_t data_validator = 0b000;
 
 //==============================================================================
 
-const string commands[] = { "stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop" };
+const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
 
 //==============================================================================
 
@@ -110,19 +115,21 @@ extern bool linear_negative;
 extern bool angular_negative;
 //==============================================================================
 
-void CllbckTim60Hz(const ros::TimerEvent& event);
+void CllbckTim60Hz(const ros::TimerEvent &event);
 
-void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr& msg)
+void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 {
     general_instance.raw_obs_data.clear();
     general_instance.obs_data.clear();
 
-    if (msg->x.size() == 0) {
+    if (msg->x.size() == 0)
+    {
         general_instance.obs_status = false;
         return;
     }
 
-    for (int i = 0; i < msg->x.size(); i++) {
+    for (int i = 0; i < msg->x.size(); i++)
+    {
         Obstacles raw_obs;
         raw_obs.x = msg->x[i];
         raw_obs.y = msg->y[i];
@@ -144,7 +151,7 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr& msg)
     data_validator |= 0b010;
 }
 
-void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr& msg, general_data_ptr general_instance)
+void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
 {
     // posisi sumbu x
     general_instance->car_data.rear_left_wheel_joint = msg->position[0];
@@ -157,14 +164,14 @@ void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr& msg, general_data
     // general_instance->car_data.distance_between_wheels = fabs(general_instance->car_data.front_right_wheel_joint - general_instance->car_data.front_left_wheel_joint);
 }
 
-void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr& msg)
+void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 {
     general_instance.car_pose.x = msg->x;
     general_instance.car_pose.y = msg->y;
     general_instance.car_pose.th = msg->z;
 }
 
-void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
+void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 {
 
     general_instance.buffer_target_x = msg->target_x;
@@ -175,24 +182,18 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     general_instance.middle_available = false;
     general_instance.right_available = false;
 
-    if (msg->left_lane_x_top != 0
-        && msg->left_lane_x_bottom != 0
-        && msg->left_lane_y_top != 0
-        && msg->left_lane_y_bottom != 0) {
+    if (msg->left_lane_x_top != 0 && msg->left_lane_x_bottom != 0 && msg->left_lane_y_top != 0 && msg->left_lane_y_bottom != 0)
+    {
         general_instance.left_available = true;
     }
 
-    if (msg->middle_lane_x_top != 0
-        && msg->middle_lane_x_bottom != 0
-        && msg->middle_lane_y_top != 0
-        && msg->middle_lane_y_bottom != 0) {
+    if (msg->middle_lane_x_top != 0 && msg->middle_lane_x_bottom != 0 && msg->middle_lane_y_top != 0 && msg->middle_lane_y_bottom != 0)
+    {
         general_instance.middle_available = true;
     }
 
-    if (msg->right_lane_x_top != 0
-        && msg->right_lane_x_bottom != 0
-        && msg->right_lane_y_top != 0
-        && msg->right_lane_y_bottom != 0) {
+    if (msg->right_lane_x_top != 0 && msg->right_lane_x_bottom != 0 && msg->right_lane_y_top != 0 && msg->right_lane_y_bottom != 0)
+    {
         general_instance.right_available = true;
     }
 
@@ -249,25 +250,30 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr& msg)
     // Logger(MAGENTA, "middle x : %f middle y : %f", dist_x_middle, dist_y_middle);
     // Logger(MAGENTA, "right x : %f right y : %f", dist_x_right, dist_y_right);
 
-    if (general_instance.left_available
-        && general_instance.middle_available
-        && general_instance.right_available) {
+    if (general_instance.left_available && general_instance.middle_available && general_instance.right_available)
+    {
         general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
     }
 
     data_validator |= 0b001;
 }
 
-void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr& msg)
+void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
     general_instance.sign_type = msg->data;
     data_validator |= 0b100;
 }
 
-void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr& msg, general_data_ptr general_instance)
+void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
     // printf("signal stop %d\n", general_instance->signal_stop);
+}
+
+void CllbckSubVisionRoadSignPy(const std_msgs::StringConstPtr &msg, general_data_ptr general_instance)
+{
+    general_instance->road_sign_from_model = msg->data;
+    printf("road sign from model %s\n", general_instance->road_sign_from_model.c_str());
 }
 
 //==============================================================================
@@ -292,7 +298,8 @@ int8_t kbhit()
     static const int STDIN = 0;
     static bool initialized = false;
 
-    if (!initialized) {
+    if (!initialized)
+    {
         termios term;
         tcgetattr(STDIN, &term);
         term.c_lflag &= ~ICANON;

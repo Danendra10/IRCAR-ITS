@@ -12,13 +12,14 @@
 // #define DRIVE
 #define TRANSMIT_VELOCITY
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     ros::init(argc, argv, "master");
     ros::NodeHandle NH;
     ros::MultiThreadedSpinner MTS;
 
-    if (MasterInit() == -1) {
+    if (MasterInit() == -1)
+    {
         ros::shutdown();
         return -1;
     }
@@ -27,9 +28,6 @@ int main(int argc, char** argv)
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
     general_instance.sub_car_pose = NH.subscribe("/car_pose", 1, CllbckSubCarPose);
-    /**
-     * TODO: No data being published @hernanda16
-     */
     general_instance.sub_real_lines = NH.subscribe("/real_lines", 1, CllbckSubRealLaneVector);
     general_instance.sub_lidar_data = NH.subscribe("/lidar_data", 1, CllbckSubLidarData);
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
@@ -42,7 +40,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void CllbckTim60Hz(const ros::TimerEvent& event)
+void CllbckTim60Hz(const ros::TimerEvent &event)
 {
     // printf("pid_angular_const %f %f %f || pid_linear %f %f %f\n", pid_angular_const.kp, pid_angular_const.ki, pid_angular_const.kd, pid_linear_const.kp, pid_linear_const.ki, pid_linear_const.kd);
     GetKeyboard();
@@ -57,10 +55,12 @@ void CllbckTim60Hz(const ros::TimerEvent& event)
 void GetKeyboard()
 {
     static uint8_t prev_key = 0;
-    if (kbhit() > 0) {
+    if (kbhit() > 0)
+    {
         char key = std::cin.get();
 
-        switch (key) {
+        switch (key)
+        {
         case 'w':
             general_instance.main_state.value = FORWARD;
             break;
@@ -92,7 +92,8 @@ void MoveRobot(float vx_, float vz_)
 
 void SimulatorState()
 {
-    switch (general_instance.main_state.value) {
+    switch (general_instance.main_state.value)
+    {
     case FORWARD:
         MoveRobot(4, 0);
         break;
@@ -125,7 +126,8 @@ void SimulatorState()
 
 void AutoDrive(general_data_ptr data)
 {
-    try {
+    try
+    {
         if (data_validator < 0b111)
             return;
 
@@ -138,9 +140,11 @@ void AutoDrive(general_data_ptr data)
 
         // Logger(RED, "is_unlocked: %d || Detected a sign %d", is_unlocked, data->sign_type);
 
-        switch (data->sign_type) {
+        switch (data->sign_type)
+        {
         case NO_SIGN:
-            if (is_unlocked) {
+            if (is_unlocked)
+            {
                 // Logger(RED, "No Sign Detected");
                 // DecideCarTarget(data);
             }
@@ -149,7 +153,8 @@ void AutoDrive(general_data_ptr data)
             if (is_unlocked)
                 is_unlocked = false;
             // Logger(RED, "Entered State Sign Right");
-            if (TurnCarRight90Degree2(data, 0.5, 10) && !is_unlocked) {
+            if (TurnCarRight90Degree2(data, 0.5, 10) && !is_unlocked)
+            {
                 Logger(RED, "Detected a Right Sign");
                 is_unlocked = true;
                 data->sign_type = NO_SIGN;
@@ -158,9 +163,13 @@ void AutoDrive(general_data_ptr data)
         }
 
         data->prev_sign_type = data->sign_type;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << e.what() << '\n';
-    } catch (...) {
+    }
+    catch (...)
+    {
         std::cout << "Error cought in line: " << __LINE__ << std::endl;
     }
 }
@@ -176,10 +185,13 @@ bool StopRobot(general_data_ptr data, float time_to_stop)
     static double time_1 = ros::Time::now().toSec();
     double current_time = ros::Time::now().toSec();
 
-    if (current_time - time_1 < time_to_stop) {
+    if (current_time - time_1 < time_to_stop)
+    {
         data->car_vel.x = 0;
         data->car_vel.th = 0;
-    } else {
+    }
+    else
+    {
         return true;
     }
 }
@@ -277,14 +289,18 @@ void SetRobotSteering(general_data_ptr general_data, float steering)
 
 bool TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn)
 {
-    if (StopRobot(general_data, 1.0)) {
+    if (StopRobot(general_data, 1.0))
+    {
 
         static double time_1 = ros::Time::now().toSec();
         double current_time = ros::Time::now().toSec();
-        if (current_time - time_1 < time_to_turn) {
+        if (current_time - time_1 < time_to_turn)
+        {
             printf("time: %f\n", current_time - time_1);
             // SetRobotSteering(general_data, steering);
-        } else {
+        }
+        else
+        {
             return true;
         }
     }
@@ -351,7 +367,8 @@ void DecideCarTarget(general_data_ptr general_data)
     general_data->car_target.y = general_data->buffer_target_y;
 
     // Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
-    try {
+    try
+    {
         if (data_validator < 0b011)
             return;
 
@@ -361,43 +378,60 @@ void DecideCarTarget(general_data_ptr general_data)
         float obs_from_left_target;
         float obs_from_right_target;
 
-        if (general_data->left_available && general_data->middle_available) {
+        if (general_data->left_available && general_data->middle_available)
+        {
             obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
-        } else if (general_data->left_available) {
+        }
+        else if (general_data->left_available)
+        {
             obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
-        } else if (general_data->middle_available) {
+        }
+        else if (general_data->middle_available)
+        {
             obs_from_left_target = abs(left_obs_y - (general_data->car_target_middle.y - 2 * general_data->divider));
         }
 
-        if (general_data->right_available && general_data->middle_available) {
+        if (general_data->right_available && general_data->middle_available)
+        {
             obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-        } else if (general_data->right_available) {
+        }
+        else if (general_data->right_available)
+        {
             obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-        } else if (general_data->middle_available) {
+        }
+        else if (general_data->middle_available)
+        {
             obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
         }
 
         // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
         if (!general_data->obs_status)
             general_data->car_side = 0;
-        else {
+        else
+        {
             if (obs_from_left_target > obs_from_right_target)
                 general_data->car_side = 10;
             else if (obs_from_left_target < obs_from_right_target)
                 general_data->car_side = 20;
         }
-        switch (general_data->car_side) {
+        switch (general_data->car_side)
+        {
         case 10:
             printf("TARGET KIRI\n");
-            if (general_data->left_available && general_data->middle_available) {
+            if (general_data->left_available && general_data->middle_available)
+            {
                 Logger(CYAN, "KIRI TENGAH");
                 general_data->car_target.x = (general_data->car_target_left.x + general_data->car_target_middle.x) / 2.0;
                 general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y) / 2.0 - general_data->spacer_real_y;
-            } else if (general_data->left_available) {
+            }
+            else if (general_data->left_available)
+            {
                 Logger(CYAN, "KIRI");
                 general_data->car_target.x = general_data->car_target_left.x;
                 general_data->car_target.y = general_data->car_target_left.y + general_data->divider - general_data->spacer_real_y;
-            } else if (general_data->middle_available) {
+            }
+            else if (general_data->middle_available)
+            {
                 Logger(CYAN, "TENGAH");
                 general_data->car_target.x = general_data->car_target_middle.x;
                 general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
@@ -406,15 +440,20 @@ void DecideCarTarget(general_data_ptr general_data)
 
         case 20:
             printf("TARGET KANAN\n");
-            if (general_data->right_available && general_data->middle_available) {
+            if (general_data->right_available && general_data->middle_available)
+            {
                 Logger(CYAN, "TENGAH KANAN");
                 general_data->car_target.x = (general_data->car_target_right.x + general_data->car_target_middle.x) / 2.0;
                 general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
-            } else if (general_data->right_available) {
+            }
+            else if (general_data->right_available)
+            {
                 Logger(CYAN, "KANAN");
                 general_data->car_target.x = general_data->car_target_right.x;
                 general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
-            } else if (general_data->middle_available) {
+            }
+            else if (general_data->middle_available)
+            {
                 Logger(CYAN, "TENGAH");
                 general_data->car_target.x = general_data->car_target_middle.x;
                 general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
@@ -437,21 +476,29 @@ void DecideCarTarget(general_data_ptr general_data)
         //     return;
         // if (general_data->middle_lane[midd - 1].x == 0)
         //     return;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cout << "Error occurred on line: " << __LINE__ << std::endl;
         std::cout << "Error message: " << e.what() << std::endl;
-    } catch (...) {
+    }
+    catch (...)
+    {
         ROS_ERROR_STREAM("Error caught on line: " << __LINE__);
     }
 
-    if (general_data->obs_status) {
+    if (general_data->obs_status)
+    {
         general_data->prev_x = general_data->car_pose.x;
         general_data->prev_y = general_data->car_pose.y;
         general_data->last_lidar_status = true;
-    } else if (!general_data->obs_status && general_data->last_lidar_status) {
+    }
+    else if (!general_data->obs_status && general_data->last_lidar_status)
+    {
         general_data->car_target.y = 0;
         Logger(RED, "TEMP FORWARD");
-        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 2) {
+        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 2)
+        {
             general_data->last_lidar_status = false;
         }
     }
@@ -505,15 +552,21 @@ void TransmitData(general_data_ptr data)
     geometry_msgs::Twist vel_msg;
     float buffer_linear;
     float buffer_angular;
-    if (linear_negative) {
+    if (linear_negative)
+    {
         buffer_linear = -motion_return.linear;
-    } else {
+    }
+    else
+    {
         buffer_linear = motion_return.linear;
     }
 
-    if (angular_negative) {
+    if (angular_negative)
+    {
         buffer_angular = -motion_return.angular;
-    } else {
+    }
+    else
+    {
         buffer_angular = motion_return.angular;
     }
     vel_msg.linear.x = buffer_linear;
@@ -533,7 +586,8 @@ void TransmitData(general_data_ptr data)
 
 int MasterInit()
 {
-    try {
+    try
+    {
         char cfg_file[100];
         std::string current_path = ros::package::getPath("vision");
         sprintf(cfg_file, "%s/../../config/static_conf.yaml", current_path.c_str());
@@ -549,15 +603,25 @@ int MasterInit()
         pid_angular_const.kp = config["PID"]["Angular"]["kp"].as<float>();
         pid_angular_const.ki = config["PID"]["Angular"]["ki"].as<float>();
         pid_angular_const.kd = config["PID"]["Angular"]["kd"].as<float>();
-    } catch (YAML::BadFile& e) {
+    }
+    catch (YAML::BadFile &e)
+    {
         printf("Error: %s\n", e.what());
-    } catch (YAML::ParserException& e) {
+    }
+    catch (YAML::ParserException &e)
+    {
         printf("Error: %s\n", e.what());
-    } catch (YAML::RepresentationException& e) {
+    }
+    catch (YAML::RepresentationException &e)
+    {
         printf("Error: %s\n", e.what());
-    } catch (std::exception& e) {
+    }
+    catch (std::exception &e)
+    {
         printf("Error: %s\n", e.what());
-    } catch (...) {
+    }
+    catch (...)
+    {
         cout << "Error caught on line: " << __LINE__ << endl;
     }
 }
