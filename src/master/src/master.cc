@@ -411,7 +411,7 @@ void DecideCarTarget(general_data_ptr general_data)
         {
             if (obs_from_left_target > obs_from_right_target)
                 general_data->car_side = 10;
-            else if (obs_from_left_target < obs_from_right_target)
+            else if ((obs_from_right_target - obs_from_left_target) > 0.01)
                 general_data->car_side = 20;
         }
         switch (general_data->car_side)
@@ -536,7 +536,7 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    vel_linear = 9;
+    vel_linear = 12;
     if (data->obs_status == true)
         vel_linear *= 0.6;
     if (data->car_target.y < 0)

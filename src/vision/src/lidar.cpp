@@ -79,7 +79,7 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr& msg)
 {
     msg_collection::Obstacles raw_obstacles;
     ranges = msg->ranges;
-    for (int i = 0; i < ranges.size(); i++) {
+    for (int i = 20; i < 160; i++) {
         float curr_range = ranges[i];
         float obs_x, obs_y;
         if (ranges[i] < 20) {
