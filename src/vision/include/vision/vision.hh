@@ -110,15 +110,15 @@ PolynomialRegression polynom(DEGREE);
 
 //============================================================
 
-void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr& msg);
-void SubOdomRaw(const nav_msgs::Odometry::ConstPtr& msg);
-void SubLidarData(const msg_collection::Obstacles::ConstPtr& msg);
-void SubCmdVision(const msg_collection::CmdVision::ConstPtr& msg);
+void SubRawFrameCllbck(const sensor_msgs::ImageConstPtr &msg);
+void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg);
+void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg);
+void SubCmdVision(const msg_collection::CmdVision::ConstPtr &msg);
 
 //============================================================
 
-void Tim30HzCllbck(const ros::TimerEvent& event);
-void click_event(int event, int x, int y, int flags, void* params);
+void Tim30HzCllbck(const ros::TimerEvent &event);
+void click_event(int event, int x, int y, int flags, void *params);
 
 //============================================================
 
@@ -126,16 +126,12 @@ void Init();
 void record();
 
 void Detect(cv::Mat frame);
-void ROI(cv::Mat& frame);
-void Hough(cv::Mat frame, std::vector<cv::Vec4i>& line);
-void Display(cv::Mat& frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
-void Average(cv::Mat frame, std::vector<cv::Vec4i>& lines);
-void SlopeIntercept(cv::Vec4i& lines, double& slope, double& intercept);
-cv::Vec2f VectorAvg(std::vector<cv::Vec2f> in_vec);
-std::vector<cv::Vec4i> MakePoints(cv::Mat frame, cv::Vec2f lineSI);
-std::vector<cv::Vec4i> SlidingWindows(cv::Mat& frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y);
-void BinaryStacking(cv::Mat frame, cv::Mat& frame_dst);
-void CenterSpike(cv::Mat frame, int start, int stop, int& index);
+void ROI(cv::Mat &frame);
+void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity);
+void SlopeIntercept(cv::Vec4i &lines, double &slope, double &intercept);
+std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, std::vector<int> nonzero_x, std::vector<int> nonzero_y);
+void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst);
+void CenterSpike(cv::Mat frame, int start, int stop, int &index);
 
 //============================================================
 
