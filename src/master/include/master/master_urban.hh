@@ -154,6 +154,11 @@ void CllbckSubCarPose(const nav_msgs::Odometry::ConstPtr &msg)
     general_instance.car_pose.x = msg->pose.pose.position.x;
     general_instance.car_pose.y = msg->pose.pose.position.y;
     general_instance.car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
+
+    while (general_instance.car_pose.th < 0)
+        general_instance.car_pose.th += 360;
+    while (general_instance.car_pose.th > 360)
+        general_instance.car_pose.th -= 360;
 }
 
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
@@ -165,13 +170,11 @@ void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
-    // printf("signal stop %d\n", general_instance->signal_stop);
 }
 
 void CllbckSubVisionRoadSignPy(const std_msgs::StringConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->road_sign_from_model = msg->data;
-    printf("road sign from model %s\n", general_instance->road_sign_from_model.c_str());
 }
 
 void CllbckAngleError(const std_msgs::Float32ConstPtr &msg, general_data_ptr general_instance)

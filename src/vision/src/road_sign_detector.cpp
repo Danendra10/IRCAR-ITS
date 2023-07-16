@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     pub_signal_stop = nh.advertise<std_msgs::UInt8>("/velocity/cmd/stop", 1);
 
     sub_raw_frame = it.subscribe("/catvehicle/camera_front/image_raw_front", 1, CallbackSubRawFrame);
-    tim_30hz = nh.createTimer(ros::Duration(1.0 / 60.0), CallbackTimer30Hz);
+    tim_30hz = nh.createTimer(ros::Duration(1.0 / 30.0), CallbackTimer30Hz);
 
     spinner.spin();
     return 0;
@@ -75,6 +75,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     float min_dist = 1000000;
     int min_index = -1;
     static int prev_min_index = -1;
+    static int last_id = -1;
 
     /**
      * @brief This for loop is used to find the closest marker to the camera
@@ -106,9 +107,15 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         counter = 0;
         prev_min_index = min_index;
+        last_id = marker_ids[min_index];
     }
 
-    printf("counter: %d\n", counter);
+    if (counter > threshold_to_delete_last_id)
+    {
+        last_id = -1;
+    }
+
+    printf("Last ID: %d\n", last_id);
 
     if (counter < threshold_counter_road_sign)
     {
@@ -130,7 +137,9 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
          * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
          */
         // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
-        if (center.x > x_pos_road_sign_threshold && center.y < y_pos_road_sign_threshold)
+        float area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
+
+        if (area_of_marker > 2550)
         {
             msg.data = id;
         }
@@ -141,7 +150,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     else
     {
         std_msgs::UInt16 msg;
-        msg.data = 8;
+        msg.data = last_id;
         pub_detected_sign_data.publish(msg);
     }
 
