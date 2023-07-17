@@ -24,6 +24,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    NH.getParam("is_urban", is_urban);
+
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
@@ -33,6 +35,7 @@ int main(int argc, char **argv)
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
     general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
+    general_instance.sub_vision_angle_error = NH.subscribe<std_msgs::Float32>("/vision/error_angle", 1, boost::bind(CllbckAngleError, _1, &general_instance));
 
     general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
 
@@ -42,14 +45,117 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
-    // printf("pid_angular_const %f %f %f || pid_linear %f %f %f\n", pid_angular_const.kp, pid_angular_const.ki, pid_angular_const.kd, pid_linear_const.kp, pid_linear_const.ki, pid_linear_const.kd);
-    GetKeyboard();
-    SimulatorState();
-    // AutoDrive(&general_instance);
-    DecideCarTarget(&general_instance);
+    if (!is_urban)
+    {
+        GetKeyboard();
+        SimulatorState();
+        DecideCarTarget(&general_instance);
 #ifdef TRANSMIT_VELOCITY
-    TransmitData(&general_instance);
+        TransmitData(&general_instance);
 #endif
+    }
+    else
+    {
+        if (data_validator < 0b011)
+            return;
+
+        DriveUrban();
+    }
+}
+
+void DriveUrban()
+{
+    if (general_instance.sign_type == SIGN_RIGHT)
+    {
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        {
+            // printf("RIGHT\n");
+            motion_return.linear = 3.7;
+            TransmitData(&general_instance);
+            return;
+        }
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle = current_angle - 90;
+
+        if (target_angle < 0)
+            target_angle += 360;
+        else if (target_angle > 360)
+            target_angle -= 360;
+
+        float angle_error = target_angle - general_instance.car_pose.th;
+        // angle error should be -90 < angle_error < 90
+        if (angle_error > 180)
+            angle_error -= 360;
+        else if (angle_error < -180)
+            angle_error += 360;
+
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.8);
+        motion_return.linear = 3;
+        if (fabs(angle_error) < 5)
+        {
+            general_instance.sign_type = NO_SIGN;
+            goto withoutSign;
+        }
+        TransmitData(&general_instance);
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_FORWARD)
+    {
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(5).toSec())
+        {
+            // printf("forward\n");
+            motion_return.linear = 10;
+            motion_return.angular = 0;
+            TransmitData(&general_instance);
+            return;
+        }
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_LEFT)
+    {
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        {
+            // printf("forward\n");
+            motion_return.linear = 10;
+            TransmitData(&general_instance);
+            return;
+        }
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle = current_angle + 90;
+
+        if (target_angle < 0)
+            target_angle += 360;
+        else if (target_angle > 360)
+            target_angle -= 360;
+
+        float angle_error = target_angle - general_instance.car_pose.th;
+
+        if (angle_error > 180)
+            angle_error -= 360;
+        else if (angle_error < -180)
+            angle_error += 360;
+
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.5);
+        motion_return.linear = 3;
+        TransmitData(&general_instance);
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_STOP)
+    {
+        motion_return.linear = 0;
+        motion_return.angular = 0;
+        TransmitData(&general_instance);
+        return;
+    }
+withoutSign:;
+    DecideCarTarget(&general_instance);
+    RobotMovement(&general_instance);
+    TransmitData(&general_instance);
 }
 
 void GetKeyboard()
@@ -394,7 +500,7 @@ void DecideCarTarget(general_data_ptr general_data)
                 obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
             else if (general_data->middle_available)
                 obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-            Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
+            // Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
 
             if ((obs_from_left_target - obs_from_right_target) > 0.05)
                 general_data->car_side = 10;
@@ -405,7 +511,7 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side)
         {
         case 10:
-            printf("TARGET KIRI\n");
+            // printf("TARGET KIRI\n");
             if (general_data->left_available && general_data->middle_available)
             {
                 Logger(CYAN, "KIRI TENGAH");
@@ -428,7 +534,7 @@ void DecideCarTarget(general_data_ptr general_data)
             break;
 
         case 20:
-            printf("TARGET KANAN\n");
+            // printf("TARGET KANAN\n");
             if (general_data->right_available && general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH KANAN");

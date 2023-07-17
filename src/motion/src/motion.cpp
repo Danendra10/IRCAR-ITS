@@ -69,13 +69,13 @@ void AngularControl(float angular_error, float angular_vel, Velocity_t *vel_ret)
 {
     static PID_t angular_pid;
 
-    // angular_negative = false;
+    angular_negative = false;
 
-    // if (angular_vel < 0)
-    // {
-    //     angular_negative = true;
-    //     angular_vel *= -1.0;
-    // }
+    if (angular_vel < 0)
+    {
+        angular_negative = true;
+        angular_vel *= -1.0;
+    }
 
     PIDInit(&angular_pid, pid_angular_const);
 

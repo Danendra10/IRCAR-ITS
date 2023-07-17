@@ -164,7 +164,7 @@ void Init()
 void Detect(cv::Mat frame)
 {
     // Logger(MAGENTA, "Detecting ...");
-    cv::Mat frame_gray, frame_canny, frame_thresh;
+    cv::Mat frame_gray, frame_canny, frame_thresh, frame_road_thresh, frame_side_thresh;
     cv::Mat result = frame.clone();
 
     cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
@@ -174,7 +174,22 @@ void Detect(cv::Mat frame)
     //==Option Threshold
     if (is_urban)
     {
-        cv::threshold(frame_gray, frame_thresh, 130, 255, cv::THRESH_BINARY);
+        cv::threshold(frame_gray, frame_thresh, 130, 255, cv::THRESH_BINARY);          // for line
+        cv::threshold(frame_gray, frame_side_thresh, 5, 255, cv::THRESH_BINARY);       // for black side of IPM
+        cv::threshold(frame_gray, frame_road_thresh, 130, 255, cv::THRESH_BINARY_INV); // for road
+        cv::bitwise_and(frame_side_thresh, frame_road_thresh, frame_road_thresh);
+        cv::erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
+        cv::dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 5);
+        cv::erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 4);
+        cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 2);
+        cv::dilate(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 8);
+        cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 7);
+        cv::bitwise_and(frame_road_thresh, frame_thresh, frame_thresh);
+        if (!frame_thresh.empty())
+            cv::imshow("line thresh", frame_thresh);
+        // cv::imshow("side thresh", frame_side_thresh);
+        if (!frame_road_thresh.empty())
+            cv::imshow("road thresh", frame_road_thresh);
     }
     else
     {
@@ -183,6 +198,8 @@ void Detect(cv::Mat frame)
     erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     ROI(frame_thresh);
+    if (is_urban && !frame_thresh.empty())
+        cv::imshow("threshold ROI", frame_thresh);
 #endif
 
 #ifdef edge_detection
@@ -278,7 +295,7 @@ void ROI(cv::Mat &frame)
     fillConvexPoly(frame_mask, ROI, cv::Scalar(255));
     cv::bitwise_and(frame, frame_mask, frame);
 
-    // cv::imshow("mask", frame_mask);
+    // cv::imshow("mask roi", frame_mask);
 }
 
 void Display(cv::Mat &frame, std::vector<cv::Vec4i> lines, int b_, int g_, int r_, float intensity)
@@ -401,7 +418,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     cv::Mat frame_binary = frame.clone();
     mutex_binary_frame.unlock();
 
-    Logger(CYAN, "Processing Binary Stacking");
+    // Logger(CYAN, "Processing Binary Stacking");
     std::vector<cv::Vec2i> nonzero;
     cv::findNonZero(frame_binary, nonzero);
 
@@ -424,11 +441,11 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     // std::cout << verticalSum << std::endl;
     if (binaryMask.empty())
     {
-        Logger(RED, "binaryMask is empty");
+        // Logger(RED, "binaryMask is empty");
     }
     if (verticalSum.empty())
     {
-        Logger(RED, "verticalSum is empty");
+        // Logger(RED, "verticalSum is empty");
     }
 
     const int mid_point = verticalSum.cols / 2.0;
@@ -460,7 +477,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 
     for (int i = 0; i < spike; i++)
     {
-        Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
+        // Logger(YELLOW, "start : %d || stop : %d", start[i], stop[i]);
     }
 
     // Logger(RED, "spike : %d", spike);
@@ -487,7 +504,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         // cv::circle(frame_dst, cv::Point(center_x_base[i], 460), 3, cv::Scalar(255, 0, 0), 10);
     }
 
-    Logger(CYAN, "spike : %d | counter : %d", spike, counter);
+    // Logger(CYAN, "spike : %d | counter : %d", spike, counter);
 
     spike_final = spike - counter;
 
@@ -522,10 +539,10 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     // problem is used to debug if road target has problem not being able to identify new road target from prev x in new sliding windows
     problem = true;
 
-    Logger(CYAN, "Finding n-lines");
+    // Logger(CYAN, "Finding n-lines");
     if (spike_final == 3)
     {
-        Logger(GREEN, "3 LINES DETECTED");
+        // Logger(GREEN, "3 LINES DETECTED");
         road_target = 1;
         must3Lines = false;
         canbeIntercept = true;
@@ -549,9 +566,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
             if (abs(prev_x_target - in_points[i][0]) < 100 && abs(prev_x_target - in_points[i][2]) < 100)
             {
-                Logger(GREEN, "MORE THAN 3 LINES DETECTED");
+                // Logger(GREEN, "MORE THAN 3 LINES DETECTED");
                 road_target = i;
-                Logger(YELLOW, "New Road Target %d", i);
+                // Logger(YELLOW, "New Road Target %d", i);
                 problem = false;
             }
 
@@ -572,30 +589,30 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
             }
         }
 
-        Logger(GREEN, "MORE THAN 3 |==| left : %d | mid : %d | right : %d", prev_left[0], prev_middle[0], prev_right[0]);
+        // Logger(GREEN, "MORE THAN 3 |==| left : %d | mid : %d | right : %d", prev_left[0], prev_middle[0], prev_right[0]);
 
         // if above cannot determine new road target from prev x in new sliding windows, problem cannot be false
         if (problem)
         {
-            Logger(RED, "SOMETHING WRONG IN ROAD TARGET");
-            Logger(YELLOW, "current road target %d", road_target);
-            Logger(YELLOW, "current prev x target %d", prev_x_target);
-            Logger(YELLOW, "current prev spike %d", prev_spike);
+            // Logger(RED, "SOMETHING WRONG IN ROAD TARGET");
+            // Logger(YELLOW, "current road target %d", road_target);
+            // Logger(YELLOW, "current prev x target %d", prev_x_target);
+            // Logger(YELLOW, "current prev spike %d", prev_spike);
             x_target = prev_x_target;
             y_target = frame_binary.rows - 200;
         }
     }
     else if (spike_final == 2 && (!must3Lines))
     {
-        Logger(GREEN, "2 LINES");
+        // Logger(GREEN, "2 LINES");
         for (int i = 0; i < in_points.size(); i++)
         {
             // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
             if (abs(prev_x_target - in_points[i][0]) <= 100 && abs(prev_x_target - in_points[i][2]) <= 100)
             {
-                Logger(GREEN, "2 LINES DETECTED");
+                // Logger(GREEN, "2 LINES DETECTED");
                 road_target = i;
-                Logger(YELLOW, "New Road Target %d", i);
+                // Logger(YELLOW, "New Road Target %d", i);
                 problem = false;
                 break;
             }
@@ -622,10 +639,10 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         // if above cannot determine new road target from prev x in new sliding windows, problem cannot be false
         if (problem)
         {
-            Logger(RED, "SOMETHING WRONG IN ROAD TARGET");
-            Logger(YELLOW, "current road target %d", road_target);
-            Logger(YELLOW, "current prev x target %d", prev_x_target);
-            Logger(YELLOW, "current prev spike %d", prev_spike);
+            // Logger(RED, "SOMETHING WRONG IN ROAD TARGET");
+            // Logger(YELLOW, "current road target %d", road_target);
+            // Logger(YELLOW, "current prev x target %d", prev_x_target);
+            // Logger(YELLOW, "current prev spike %d", prev_spike);
             x_target = prev_x_target;
             y_target = frame_binary.rows - 200;
             // must3Lines = true;
@@ -634,12 +651,12 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     }
     else if (spike_final == 1 && (!must3Lines))
     {
-        Logger(GREEN, "1 LINE");
+        // Logger(GREEN, "1 LINE");
         if (abs(prev_x_target - in_points[0][0]) < 100 && abs(prev_x_target - in_points[0][2]) < 100)
         {
-            Logger(GREEN, "1 LINE DETECTED");
+            // Logger(GREEN, "1 LINE DETECTED");
             road_target = 0;
-            Logger(YELLOW, "New Road Target %d", 0);
+            // Logger(YELLOW, "New Road Target %d", 0);
             problem = false;
         }
 
@@ -664,10 +681,10 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 
         if (problem)
         {
-            Logger(BLUE, "ROAD TARGET < 2");
-            Logger(GREEN, "current road target %d", road_target);
-            Logger(GREEN, "current prev x target %d", prev_x_target);
-            Logger(GREEN, "current prev spike %d", prev_spike);
+            // Logger(BLUE, "ROAD TARGET < 2");
+            // Logger(GREEN, "current road target %d", road_target);
+            // Logger(GREEN, "current prev x target %d", prev_x_target);
+            // Logger(GREEN, "current prev spike %d", prev_spike);
 
             SlopeIntercept(in_points[0], line_SI[0][0], line_SI[0][1]);
 
