@@ -646,6 +646,22 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         y_target = frame_binary.rows - 200;
         x_target = (in_points[road_target][0] + in_points[road_target][2]) / 2.0;
 
+        if (abs(prev_left[1] - in_points[0][0]) <= 100 && abs(prev_left[1] - in_points[0][2]) <= 100)
+        {
+            prev_left[0] = 0;
+            prev_left[1] = (in_points[prev_left[0]][0] + in_points[prev_left[0]][2]) / 2.0;
+        }
+        else if (abs(prev_middle[1] - in_points[0][0]) <= 100 && abs(prev_middle[1] - in_points[0][2]) <= 100)
+        {
+            prev_middle[0] = 0;
+            prev_middle[1] = (in_points[prev_middle[0]][0] + in_points[prev_middle[0]][2]) / 2.0;
+        }
+        else if (abs(prev_right[1] - in_points[0][0]) <= 100 && abs(prev_right[1] - in_points[0][2]) <= 100)
+        {
+            prev_right[0] = 0;
+            prev_right[1] = (in_points[prev_right[0]][0] + in_points[prev_right[0]][2]) / 2.0;
+        }
+
         if (problem)
         {
             Logger(BLUE, "ROAD TARGET < 2");
@@ -661,10 +677,16 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
                 if (line_SI[0][0] < 0)
                 {
                     x_target = 600;
+                    Logger(MAGENTA, "Slope < 0");
+                    prev_left[0] = 0;
+                    prev_left[1] = (in_points[prev_left[0]][0] + in_points[prev_left[0]][2]) / 2.0;
                 }
                 else if (line_SI[0][0] > 0)
                 {
                     x_target = 200;
+                    Logger(MAGENTA, "Slope > 0");
+                    prev_right[0] = 0;
+                    prev_right[1] = (in_points[prev_right[0]][0] + in_points[prev_right[0]][2]) / 2.0;
                 }
             }
             y_target = frame_binary.rows - 200;
@@ -675,6 +697,59 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     else
     {
         Logger(RED, "OFF TRACK");
+        if (spike_final == 1)
+        {
+            SlopeIntercept(in_points[0], line_SI[0][0], line_SI[0][1]);
+
+            // target hardcode to left or right just by looking at its slope
+            if (!isnan(line_SI[0][0]))
+            {
+                if (line_SI[0][0] < 0)
+                {
+                    x_target = 600;
+                    Logger(MAGENTA, "Slope < 0");
+                    prev_left[0] = 0;
+                    prev_left[1] = (in_points[prev_left[0]][0] + in_points[prev_left[0]][2]) / 2.0;
+                }
+                else if (line_SI[0][0] > 0)
+                {
+                    x_target = 200;
+                    Logger(MAGENTA, "Slope > 0");
+                    prev_right[0] = 0;
+                    prev_right[1] = (in_points[prev_right[0]][0] + in_points[prev_right[0]][2]) / 2.0;
+                }
+            }
+        }
+        else if (spike_final == 2)
+        {
+            for (int i = 0; i < in_points.size(); i++)
+            {
+                // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
+                if (abs(prev_x_target - in_points[i][0]) <= 100 && abs(prev_x_target - in_points[i][2]) <= 100)
+                {
+                    Logger(GREEN, "2 LINES DETECTED");
+                    road_target = i;
+                    Logger(YELLOW, "New Road Target %d", i);
+                    problem = false;
+                    break;
+                }
+            }
+
+            if (road_target == 0)
+            {
+                prev_middle[0] = 0;
+                prev_right[0] = 1;
+                prev_middle[1] = (in_points[prev_middle[0]][0] + in_points[prev_middle[0]][2]) / 2.0;
+                prev_right[1] = (in_points[prev_right[0]][0] + in_points[prev_right[0]][2]) / 2.0;
+            }
+            else if (road_target == 1)
+            {
+                prev_left[0] = 0;
+                prev_middle[0] = 1;
+                prev_left[1] = (in_points[prev_left[0]][0] + in_points[prev_left[0]][2]) / 2.0;
+                prev_middle[1] = (in_points[prev_middle[0]][0] + in_points[prev_middle[0]][2]) / 2.0;
+            }
+        }
     }
 
     if (find3Lines && !must3Lines)

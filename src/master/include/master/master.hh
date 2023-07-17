@@ -205,7 +205,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     // if (general_instance.right_available)
     //     Logger(YELLOW, "Right Available");
     float spacer_x = 800 - 600;
-    float spacer_y = 30;
+    float spacer_y = 35;
     float dist_x_left = 800 - 600;
     float dist_y_left = (msg->left_lane_x_bottom + msg->left_lane_x_top) / 2.0 - 400;
     float dist_x_middle = 800 - 600;

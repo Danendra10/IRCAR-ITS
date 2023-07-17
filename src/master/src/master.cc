@@ -367,6 +367,8 @@ void DecideCarTarget(general_data_ptr general_data)
     general_data->car_target.x = general_data->buffer_target_x;
     general_data->car_target.y = general_data->buffer_target_y;
 
+    // Logger(RED, "left %d || middle %d || right %d", general_data->left_available, general_data->middle_available, general_data->right_available);
+
     // Logger(MAGENTA, "%f - %f = %f", general_data->car_pose.x, general_data->prev_x_odom, general_data->car_pose.x - general_data->prev_x_odom);
     // Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
     try
@@ -394,9 +396,9 @@ void DecideCarTarget(general_data_ptr general_data)
                 obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
             Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
 
-            if (obs_from_left_target > obs_from_right_target)
+            if ((obs_from_left_target - obs_from_right_target) > 0.05)
                 general_data->car_side = 10;
-            else if ((obs_from_right_target - obs_from_left_target) > 0.01)
+            else if ((obs_from_right_target - obs_from_left_target) > 0.05)
                 general_data->car_side = 20;
         }
 
@@ -481,8 +483,8 @@ void DecideCarTarget(general_data_ptr general_data)
     }
     else if (!general_data->obs_status && general_data->last_lidar_status)
     {
+
         general_data->car_target.y = 0;
-        Logger(RED, "TEMP FORWARD");
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 1)
         {
             general_data->last_lidar_status = false;
@@ -522,9 +524,9 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    vel_linear = 10;
+    vel_linear = 20;
     if (data->obs_status == true)
-        vel_linear *= 0.8;
+        vel_linear *= 0.65;
 
     if (data->car_target.y < 0)
         vel_angular = (delta)*vel_linear / 0.2;

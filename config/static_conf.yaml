@@ -11,6 +11,6 @@ PID:
     ki: 0
     kd: 0.01
   Angular:
-    kp: 0.15
+    kp: 0.05
     ki: 0
-    kd: 0.2
+    kd: 0.01

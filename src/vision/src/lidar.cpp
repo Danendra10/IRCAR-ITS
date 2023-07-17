@@ -84,7 +84,7 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
     {
         float curr_range = ranges[i];
         float obs_x, obs_y;
-        if (ranges[i] < 15)
+        if (ranges[i] < 7)
         {
             // based on car perspective
             obs_y = cos(DEG2RAD(i)) * curr_range;
