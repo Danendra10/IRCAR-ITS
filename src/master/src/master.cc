@@ -66,9 +66,15 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 void DriveUrban()
 {
     static double start_time = ros::Time::now().toSec();
+    static float current_angle = general_instance.car_pose.th;
+    static float target_angle_right = current_angle - 90;
+    static float target_angle_left = current_angle + 90;
     if (general_instance.prev_sign_type != general_instance.sign_type && (general_instance.prev_sign_type == -1 || general_instance.prev_sign_type == 8))
     {
         start_time = ros::Time::now().toSec();
+        current_angle = general_instance.car_pose.th;
+        target_angle_right = current_angle - 90;
+        target_angle_left = current_angle + 90;
         general_instance.prev_sign_type = general_instance.sign_type;
     }
     // printf("general_instance.sign_type: %d %d\n", general_instance.sign_type, general_instance.prev_sign_type);
@@ -78,26 +84,24 @@ void DriveUrban()
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
             // printf("RIGHT\n");
-            motion_return.linear = 3.7;
+            motion_return.linear = 3.5;
             TransmitData(&general_instance);
             return;
         }
-        static float current_angle = general_instance.car_pose.th;
-        static float target_angle = current_angle - 90;
 
-        if (target_angle < 0)
-            target_angle += 360;
-        else if (target_angle > 360)
-            target_angle -= 360;
+        if (target_angle_right < 0)
+            target_angle_right += 360;
+        else if (target_angle_right > 360)
+            target_angle_right -= 360;
 
-        float angle_error = target_angle - general_instance.car_pose.th;
+        float angle_error = target_angle_right - general_instance.car_pose.th;
         // angle error should be -90 < angle_error < 90
         if (angle_error > 180)
             angle_error -= 360;
         else if (angle_error < -180)
             angle_error += 360;
 
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
         AngularControl(angle_error, 0.8);
         motion_return.linear = 3;
         if (fabs(angle_error) < 5)
@@ -129,22 +133,20 @@ void DriveUrban()
             TransmitData(&general_instance);
             return;
         }
-        static float current_angle = general_instance.car_pose.th;
-        static float target_angle = current_angle + 90;
 
-        if (target_angle < 0)
-            target_angle += 360;
-        else if (target_angle > 360)
-            target_angle -= 360;
+        if (target_angle_left < 0)
+            target_angle_left += 360;
+        else if (target_angle_left > 360)
+            target_angle_left -= 360;
 
-        float angle_error = target_angle - general_instance.car_pose.th;
+        float angle_error = target_angle_left - general_instance.car_pose.th;
 
         if (angle_error > 180)
             angle_error -= 360;
         else if (angle_error < -180)
             angle_error += 360;
 
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_left);
         AngularControl(angle_error, 0.5);
         motion_return.linear = 3;
         TransmitData(&general_instance);
