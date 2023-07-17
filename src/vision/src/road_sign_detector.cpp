@@ -1,6 +1,6 @@
 #include "sign_detector/aruco.hpp"
 
-#define SHOW_FRAME
+// #define SHOW_FRAME
 // #define SHOW_SLIDER
 
 int main(int argc, char **argv)
@@ -125,7 +125,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     // Get the center of the marker in px
     Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
     // For debug purpose
-    putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+    // putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
 
     std_msgs::Int16 msg;
     /**
@@ -135,8 +135,10 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
      * you could find the threshold in static_conf.yaml if it match the condition it would publish the Id
      * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
      */
-    // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
-    area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
+    if (prev_min_index != -1)
+        area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
+    else
+        area_of_marker = 0;
 
     if (area_of_marker > 2000 && area_of_marker < 4000)
     {

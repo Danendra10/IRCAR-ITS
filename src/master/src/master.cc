@@ -67,7 +67,6 @@ void DriveUrban()
 {
     if (general_instance.sign_type == SIGN_RIGHT)
     {
-        // keep forward for 2 seconds
         static double start_time = ros::Time::now().toSec();
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
@@ -104,30 +103,21 @@ void DriveUrban()
     }
     else if (general_instance.sign_type == SIGN_FORWARD)
     {
-        // keep forward for 2 seconds
         static double start_time = ros::Time::now().toSec();
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(10).toSec())
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(5).toSec())
         {
             // printf("forward\n");
             motion_return.linear = 10;
+            motion_return.angular = 0;
             TransmitData(&general_instance);
             return;
         }
-        static float current_angle = general_instance.car_pose.th;
-        static float target_angle;
-        target_angle = current_angle;
-        float angle_error = target_angle - general_instance.car_pose.th;
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
-        AngularControl(angle_error, 0.5);
-        motion_return.linear = 3;
-        TransmitData(&general_instance);
         return;
     }
     else if (general_instance.sign_type == SIGN_LEFT)
     {
-        // keep forward for 2 seconds
-        static ros::Time start_time = ros::Time::now();
-        if ((ros::Time::now() - start_time).toSec() < ros::Duration(3).toSec())
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
             // printf("forward\n");
             motion_return.linear = 10;
@@ -135,9 +125,20 @@ void DriveUrban()
             return;
         }
         static float current_angle = general_instance.car_pose.th;
-        static float target_angle;
-        target_angle = current_angle + 90;
+        static float target_angle = current_angle + 90;
+
+        if (target_angle < 0)
+            target_angle += 360;
+        else if (target_angle > 360)
+            target_angle -= 360;
+
         float angle_error = target_angle - general_instance.car_pose.th;
+
+        if (angle_error > 180)
+            angle_error -= 360;
+        else if (angle_error < -180)
+            angle_error += 360;
+
         // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
         AngularControl(angle_error, 0.5);
         motion_return.linear = 3;
