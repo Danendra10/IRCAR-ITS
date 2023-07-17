@@ -10,6 +10,8 @@
 #include "std_msgs/UInt16.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Float32.h"
+#include "std_msgs/String.h"
 
 #include "msg_collection/CmdVision.h"
 #include "msg_collection/Obstacles.h"
@@ -55,6 +57,7 @@ typedef struct general_data_tag
     ros::Subscriber sub_lidar_data;
     ros::Subscriber sub_stop_signal;
     ros::Subscriber sub_vision_road_sign_py;
+    ros::Subscriber sub_vision_angle_error;
     ros::Timer tim_60_hz;
 
     std::vector<cv::Vec4i> vision_data_lane;
@@ -89,6 +92,8 @@ typedef struct general_data_tag
 
     String road_sign_from_model;
 
+    float angle_error;
+
 } general_data_t, *general_data_ptr;
 
 //==============================================================================
@@ -106,6 +111,7 @@ uint8_t data_validator = 0b000;
 //==============================================================================
 
 const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
+bool is_urban;
 
 //==============================================================================
 
@@ -113,6 +119,7 @@ extern PID_Const pid_linear_const;
 extern PID_Const pid_angular_const;
 extern bool linear_negative;
 extern bool angular_negative;
+
 //==============================================================================
 
 void CllbckTim60Hz(const ros::TimerEvent &event);
@@ -169,6 +176,11 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
     general_instance.car_pose.x = msg->x;
     general_instance.car_pose.y = msg->y;
     general_instance.car_pose.th = msg->z;
+
+    while (general_instance.car_pose.th < 0)
+        general_instance.car_pose.th += 360;
+    while (general_instance.car_pose.th > 360)
+        general_instance.car_pose.th -= 360;
 }
 
 void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
@@ -266,13 +278,16 @@ void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->signal_stop = msg->data;
-    // printf("signal stop %d\n", general_instance->signal_stop);
 }
 
 void CllbckSubVisionRoadSignPy(const std_msgs::StringConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->road_sign_from_model = msg->data;
-    printf("road sign from model %s\n", general_instance->road_sign_from_model.c_str());
+}
+
+void CllbckAngleError(const std_msgs::Float32ConstPtr &msg, general_data_ptr general_instance)
+{
+    general_instance->angle_error = msg->data;
 }
 
 //==============================================================================
@@ -292,6 +307,7 @@ void StopRobot(general_data_ptr data);
 bool StopRobot(general_data_ptr data, float time_to_stop);
 void UrbanMovement(general_data_ptr data);
 int MasterInit();
+void DriveUrban();
 int8_t kbhit()
 {
     static const int STDIN = 0;

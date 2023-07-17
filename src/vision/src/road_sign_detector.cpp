@@ -107,7 +107,6 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         counter = 0;
         prev_min_index = min_index;
-        last_id = marker_ids[min_index];
     }
 
     if (counter > threshold_to_delete_last_id)
@@ -117,6 +116,8 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 
     printf("Last ID: %d\n", last_id);
 
+    static float area_of_marker;
+
     if (counter < threshold_counter_road_sign)
     {
         // Get the id of the closest marker
@@ -124,7 +125,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 
         // Get the center of the marker in px
         Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
-
+        last_id = marker_ids[min_index];
         // For debug purpose
         putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
 
@@ -137,7 +138,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
          * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
          */
         // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
-        float area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
+        area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
 
         if (area_of_marker > 2550)
         {
@@ -150,7 +151,10 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     else
     {
         std_msgs::UInt16 msg;
-        msg.data = last_id;
+        if (area_of_marker > 2550)
+            msg.data = last_id;
+        else
+            msg.data = 8;
         pub_detected_sign_data.publish(msg);
     }
 

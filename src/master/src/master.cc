@@ -24,6 +24,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    NH.getParam("is_urban", is_urban);
+
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
 
@@ -33,6 +35,7 @@ int main(int argc, char **argv)
     general_instance.sub_road_sign = NH.subscribe("/vision/sign_detector/detected_sign_data", 1, CllbckSubRoadSign);
     general_instance.sub_stop_signal = NH.subscribe<std_msgs::UInt8>("/velocity/cmd/stop", 1, boost::bind(CllbckSubSignalStop, _1, &general_instance));
     general_instance.sub_car_data = NH.subscribe<sensor_msgs::JointState>("/catvehicle/joint_states", 1, boost::bind(CllbckSubCarData, _1, &general_instance));
+    general_instance.sub_vision_angle_error = NH.subscribe<std_msgs::Float32>("/vision/error_angle", 1, boost::bind(CllbckAngleError, _1, &general_instance));
 
     general_instance.tim_60_hz = NH.createTimer(ros::Duration(1 / 60), CllbckTim60Hz);
 
@@ -42,14 +45,92 @@ int main(int argc, char **argv)
 
 void CllbckTim60Hz(const ros::TimerEvent &event)
 {
-    // printf("pid_angular_const %f %f %f || pid_linear %f %f %f\n", pid_angular_const.kp, pid_angular_const.ki, pid_angular_const.kd, pid_linear_const.kp, pid_linear_const.ki, pid_linear_const.kd);
-    GetKeyboard();
-    SimulatorState();
-    // AutoDrive(&general_instance);
-    DecideCarTarget(&general_instance);
+    if (!is_urban)
+    {
+        GetKeyboard();
+        SimulatorState();
+        DecideCarTarget(&general_instance);
 #ifdef TRANSMIT_VELOCITY
-    TransmitData(&general_instance);
+        TransmitData(&general_instance);
 #endif
+    }
+    else
+    {
+        if (data_validator < 0b011)
+            return;
+
+        DriveUrban();
+    }
+}
+
+void DriveUrban()
+{
+    if (general_instance.sign_type == SIGN_RIGHT)
+    {
+        // keep forward for 2 seconds
+        static ros::Time start_time = ros::Time::now();
+        if (ros::Time::now() - start_time < ros::Duration(3))
+        {
+            printf("forward\n");
+            motion_return.linear = 10;
+            TransmitData(&general_instance);
+            return;
+        }
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle;
+        target_angle = current_angle - 90;
+        float angle_error = target_angle - general_instance.car_pose.th;
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.5);
+        motion_return.linear = 3;
+        TransmitData(&general_instance);
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_FORWARD)
+    {
+        // keep forward for 2 seconds
+        static ros::Time start_time = ros::Time::now();
+        if (ros::Time::now() - start_time < ros::Duration(3))
+        {
+            printf("forward\n");
+            motion_return.linear = 10;
+            TransmitData(&general_instance);
+            return;
+        }
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle;
+        target_angle = current_angle;
+        float angle_error = target_angle - general_instance.car_pose.th;
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.5);
+        motion_return.linear = 3;
+        TransmitData(&general_instance);
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_LEFT)
+    {
+        // keep forward for 2 seconds
+        static ros::Time start_time = ros::Time::now();
+        if (ros::Time::now() - start_time < ros::Duration(3))
+        {
+            printf("forward\n");
+            motion_return.linear = 10;
+            TransmitData(&general_instance);
+            return;
+        }
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle;
+        target_angle = current_angle + 90;
+        float angle_error = target_angle - general_instance.car_pose.th;
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.5);
+        motion_return.linear = 3;
+        TransmitData(&general_instance);
+        return;
+    }
+    DecideCarTarget(&general_instance);
+    RobotMovement(&general_instance);
+    TransmitData(&general_instance);
 }
 
 void GetKeyboard()
@@ -523,7 +604,7 @@ void RobotMovement(general_data_ptr data)
 
     float delta = atan(2 * l * sin(alpha) / ld);
     vel_linear = 10;
-    if (data->obs_status == true)
+    if (data->obs_status)
         vel_linear *= 0.8;
 
     if (data->car_target.y < 0)
