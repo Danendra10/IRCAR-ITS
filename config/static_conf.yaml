@@ -5,7 +5,7 @@ y_pos_road_sign_threshold: 270
 thresh_road_sign: 195
 max_val: 255
 
-PID:
+PID_RACE:
   Linear:
     kp: 0.7
     ki: 0
@@ -14,3 +14,14 @@ PID:
     kp: 0.05
     ki: 0
     kd: 0.01
+
+
+PID_URBAN:
+  Linear:
+    kp: 0.7
+    ki: 0
+    kd: 0.01
+  Angular:
+    kp: 0.15
+    ki: 0
+    kd: 0.2

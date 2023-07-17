@@ -185,11 +185,11 @@ void Detect(cv::Mat frame)
         cv::dilate(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 8);
         cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 7);
         cv::bitwise_and(frame_road_thresh, frame_thresh, frame_thresh);
-        if (!frame_thresh.empty())
-            cv::imshow("line thresh", frame_thresh);
+        // if (!frame_thresh.empty())
+        // cv::imshow("line thresh", frame_thresh);
         // cv::imshow("side thresh", frame_side_thresh);
-        if (!frame_road_thresh.empty())
-            cv::imshow("road thresh", frame_road_thresh);
+        // if (!frame_road_thresh.empty())
+        // cv::imshow("road thresh", frame_road_thresh);
     }
     else
     {
@@ -199,12 +199,12 @@ void Detect(cv::Mat frame)
     dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     ROI(frame_thresh);
     if (is_urban && !frame_thresh.empty())
-        cv::imshow("threshold ROI", frame_thresh);
+    // cv::imshow("threshold ROI", frame_thresh);
 #endif
 
 #ifdef edge_detection
-    //==Option Edge
-    cv::Canny(frame_gray, frame_canny, 25, 50);
+        //==Option Edge
+        cv::Canny(frame_gray, frame_canny, 25, 50);
     dilate(frame_canny, frame_canny, Mat(), Point(-1, -1), 6);
     erode(frame_canny, frame_canny, Mat(), Point(-1, -1), 4);
     ROI(frame_canny);
@@ -242,7 +242,7 @@ void Detect(cv::Mat frame)
     {
         // Logger(CYAN, "Showing result");
         cv::resize(result, result_resized, cv::Size(400, 400));
-        cv::imshow("result", result_resized);
+        // cv::imshow("result", result_resized);
     }
 }
 
@@ -694,14 +694,14 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
                 if (line_SI[0][0] < 0)
                 {
                     x_target = 600;
-                    Logger(MAGENTA, "Slope < 0");
+                    // Logger(MAGENTA, "Slope < 0");
                     prev_left[0] = 0;
                     prev_left[1] = (in_points[prev_left[0]][0] + in_points[prev_left[0]][2]) / 2.0;
                 }
                 else if (line_SI[0][0] > 0)
                 {
                     x_target = 200;
-                    Logger(MAGENTA, "Slope > 0");
+                    // Logger(MAGENTA, "Slope > 0");
                     prev_right[0] = 0;
                     prev_right[1] = (in_points[prev_right[0]][0] + in_points[prev_right[0]][2]) / 2.0;
                 }
@@ -713,7 +713,7 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     }
     else
     {
-        Logger(RED, "OFF TRACK");
+        // Logger(RED, "OFF TRACK");
         if (spike_final == 1)
         {
             SlopeIntercept(in_points[0], line_SI[0][0], line_SI[0][1]);
@@ -744,9 +744,9 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
                 // checking if prev x is in one of new sliding windows then assign new index of sliding windows become road target(middle)
                 if (abs(prev_x_target - in_points[i][0]) <= 100 && abs(prev_x_target - in_points[i][2]) <= 100)
                 {
-                    Logger(GREEN, "2 LINES DETECTED");
+                    // Logger(GREEN, "2 LINES DETECTED");
                     road_target = i;
-                    Logger(YELLOW, "New Road Target %d", i);
+                    // Logger(YELLOW, "New Road Target %d", i);
                     problem = false;
                     break;
                 }
