@@ -7,7 +7,7 @@
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/JointState.h"
-#include "std_msgs/UInt16.h"
+#include "std_msgs/Int16.h"
 #include "std_msgs/UInt8.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
@@ -67,7 +67,7 @@ typedef struct general_data_tag
     bool obs_status;
     uint8_t car_side;
     uint8_t moved_state;
-    uint16_t sign_type;
+    int sign_type;
     uint16_t prev_sign_type;
     uint16_t lock_state;
     uint8_t signal_stop;
@@ -145,7 +145,6 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         general_instance.raw_obs_data.push_back(raw_obs);
         // float dst = sqrt(pow(raw_obs.x, 2) + pow(raw_obs.y, 2));
         // if (i % 5 == 0)
-        //     printf("lidar || x %.2f y %.2f dist %f\n", raw_obs.x, raw_obs.y, dst);
 
         Obstacles obs;
         obs.x = msg->x[i] + general_instance.car_pose.x;
@@ -154,8 +153,6 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 
         general_instance.obs_status = true;
     }
-
-    // printf("obs status %d\n", general_instance.obs_status);
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -269,7 +266,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     }
 }
 
-void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
+void CllbckSubRoadSign(const std_msgs::Int16ConstPtr &msg)
 {
     data_validator |= 0b100;
     general_instance.sign_type = msg->data;

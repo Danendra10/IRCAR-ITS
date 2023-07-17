@@ -68,31 +68,47 @@ void DriveUrban()
     if (general_instance.sign_type == SIGN_RIGHT)
     {
         // keep forward for 2 seconds
-        static ros::Time start_time = ros::Time::now();
-        if (ros::Time::now() - start_time < ros::Duration(3))
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
-            printf("forward\n");
-            motion_return.linear = 10;
+            // printf("RIGHT\n");
+            motion_return.linear = 3.7;
             TransmitData(&general_instance);
             return;
         }
         static float current_angle = general_instance.car_pose.th;
-        static float target_angle;
-        target_angle = current_angle - 90;
+        static float target_angle = current_angle - 90;
+
+        if (target_angle < 0)
+            target_angle += 360;
+        else if (target_angle > 360)
+            target_angle -= 360;
+
         float angle_error = target_angle - general_instance.car_pose.th;
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
-        AngularControl(angle_error, 0.5);
+        // angle error should be -90 < angle_error < 90
+        if (angle_error > 180)
+            angle_error -= 360;
+        else if (angle_error < -180)
+            angle_error += 360;
+
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        AngularControl(angle_error, 0.8);
         motion_return.linear = 3;
+        if (fabs(angle_error) < 5)
+        {
+            general_instance.sign_type = NO_SIGN;
+            goto withoutSign;
+        }
         TransmitData(&general_instance);
         return;
     }
     else if (general_instance.sign_type == SIGN_FORWARD)
     {
         // keep forward for 2 seconds
-        static ros::Time start_time = ros::Time::now();
-        if (ros::Time::now() - start_time < ros::Duration(3))
+        static double start_time = ros::Time::now().toSec();
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(10).toSec())
         {
-            printf("forward\n");
+            // printf("forward\n");
             motion_return.linear = 10;
             TransmitData(&general_instance);
             return;
@@ -101,7 +117,7 @@ void DriveUrban()
         static float target_angle;
         target_angle = current_angle;
         float angle_error = target_angle - general_instance.car_pose.th;
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
         AngularControl(angle_error, 0.5);
         motion_return.linear = 3;
         TransmitData(&general_instance);
@@ -111,9 +127,9 @@ void DriveUrban()
     {
         // keep forward for 2 seconds
         static ros::Time start_time = ros::Time::now();
-        if (ros::Time::now() - start_time < ros::Duration(3))
+        if ((ros::Time::now() - start_time).toSec() < ros::Duration(3).toSec())
         {
-            printf("forward\n");
+            // printf("forward\n");
             motion_return.linear = 10;
             TransmitData(&general_instance);
             return;
@@ -122,12 +138,20 @@ void DriveUrban()
         static float target_angle;
         target_angle = current_angle + 90;
         float angle_error = target_angle - general_instance.car_pose.th;
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
         AngularControl(angle_error, 0.5);
         motion_return.linear = 3;
         TransmitData(&general_instance);
         return;
     }
+    else if (general_instance.sign_type == SIGN_STOP)
+    {
+        motion_return.linear = 0;
+        motion_return.angular = 0;
+        TransmitData(&general_instance);
+        return;
+    }
+withoutSign:;
     DecideCarTarget(&general_instance);
     RobotMovement(&general_instance);
     TransmitData(&general_instance);
@@ -473,7 +497,7 @@ void DecideCarTarget(general_data_ptr general_data)
                 obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
             else if (general_data->middle_available)
                 obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-            Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
+            // Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
 
             if (obs_from_left_target > obs_from_right_target)
                 general_data->car_side = 10;
@@ -484,7 +508,7 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side)
         {
         case 10:
-            printf("TARGET KIRI\n");
+            // printf("TARGET KIRI\n");
             if (general_data->left_available && general_data->middle_available)
             {
                 Logger(CYAN, "KIRI TENGAH");
@@ -507,7 +531,7 @@ void DecideCarTarget(general_data_ptr general_data)
             break;
 
         case 20:
-            printf("TARGET KANAN\n");
+            // printf("TARGET KANAN\n");
             if (general_data->right_available && general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH KANAN");

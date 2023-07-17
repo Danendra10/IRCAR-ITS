@@ -16,7 +16,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    pub_detected_sign_data = nh.advertise<std_msgs::UInt16>("/vision/sign_detector/detected_sign_data", 1);
+    pub_detected_sign_data = nh.advertise<std_msgs::Int16>("/vision/sign_detector/detected_sign_data", 1);
     pub_signal_stop = nh.advertise<std_msgs::UInt8>("/velocity/cmd/stop", 1);
 
     sub_raw_frame = it.subscribe("/catvehicle/camera_front/image_raw_front", 1, CallbackSubRawFrame);
@@ -114,49 +114,48 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         last_id = -1;
     }
 
-    printf("Last ID: %d\n", last_id);
-
     static float area_of_marker;
+    printf("Last ID: %d %f %d \n", last_id, area_of_marker, counter);
 
-    if (counter < threshold_counter_road_sign)
+    // if (counter < threshold_counter_road_sign)
+    // {
+    // Get the id of the closest marker
+    int id = marker_ids[prev_min_index];
+
+    // Get the center of the marker in px
+    Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
+    // For debug purpose
+    putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+
+    std_msgs::Int16 msg;
+    /**
+     * @brief This is a threshold to determine whether the marker is on the close spot
+     * why i did not use the distance from the camera to the marker?
+     * because the distance from the camera to the marker is not linear, so i use the position of the marker
+     * you could find the threshold in static_conf.yaml if it match the condition it would publish the Id
+     * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
+     */
+    // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
+    area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
+
+    if (area_of_marker > 2000 && area_of_marker < 4000)
     {
-        // Get the id of the closest marker
-        int id = marker_ids[prev_min_index];
-
-        // Get the center of the marker in px
-        Point2f center = (marker_corners[prev_min_index][0] + marker_corners[prev_min_index][1] + marker_corners[prev_min_index][2] + marker_corners[prev_min_index][3]) / 4;
-        last_id = marker_ids[min_index];
-        // For debug purpose
-        putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
-
-        std_msgs::UInt16 msg;
-        /**
-         * @brief This is a threshold to determine whether the marker is on the close spot
-         * why i did not use the distance from the camera to the marker?
-         * because the distance from the camera to the marker is not linear, so i use the position of the marker
-         * you could find the threshold in static_conf.yaml if it match the condition it would publish the Id
-         * to the master, if it's not then it would publish 8 to the master which means "no sign detected"
-         */
-        // printf("center.x: %f, center.y: %f || x_pos_road_sign_threshold: %d, y_pos_road_sign_threshold: %d\n", center.x, center.y, x_pos_road_sign_threshold, y_pos_road_sign_threshold);
-        area_of_marker = (marker_corners[prev_min_index][0].x - marker_corners[prev_min_index][2].x) * (marker_corners[prev_min_index][0].y - marker_corners[prev_min_index][2].y);
-
-        if (area_of_marker > 2550)
-        {
-            msg.data = id;
-        }
-        else
-            msg.data = 8;
-        pub_detected_sign_data.publish(msg);
+        last_id = marker_ids[prev_min_index];
+        msg.data = last_id;
     }
     else
-    {
-        std_msgs::UInt16 msg;
-        if (area_of_marker > 2550)
-            msg.data = last_id;
-        else
-            msg.data = 8;
-        pub_detected_sign_data.publish(msg);
-    }
+        msg.data = last_id;
+    pub_detected_sign_data.publish(msg);
+    // }
+    // else
+    // {
+    //     std_msgs::UInt16 msg;
+    //     if (area_of_marker > 2550)
+    //         msg.data = last_id;
+    //     else
+    //         msg.data = 8;
+    //     pub_detected_sign_data.publish(msg);
+    // }
 
 #ifdef SHOW_FRAME
     // if (thresholded.empty() || frame_raw.empty() || output_image.empty())
@@ -165,7 +164,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     //     return;
     // }
     // imshow("thresholded", thresholded);
-    imshow("Raw Frame", frame_raw);
+    // imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);
 #endif
 

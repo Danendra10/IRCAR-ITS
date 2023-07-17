@@ -8,7 +8,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "image_transport/image_transport.h"
 
-#include "std_msgs/UInt16.h"
+#include "std_msgs/Int16.h"
 #include "std_msgs/UInt8.h"
 
 #include "yaml-cpp/yaml.h"
@@ -45,7 +45,7 @@ cv::Ptr<cv::aruco::Dictionary> dictionary;
 int thresh_road_sign = 170;
 int max_val = 255;
 uint8_t threshold_counter_road_sign;
-uint16_t threshold_to_delete_last_id = 600;
+uint16_t threshold_to_delete_last_id = 200;
 int distance_to_road_sign_threshold;
 int x_pos_road_sign_threshold;
 int y_pos_road_sign_threshold;
