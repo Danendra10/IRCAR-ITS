@@ -76,6 +76,7 @@ typedef struct general_data_tag
     bool left_available;
     bool middle_available;
     bool right_available;
+    bool is_lidar_free;
 
     float buffer_target_x;
     float buffer_target_y;
@@ -85,10 +86,9 @@ typedef struct general_data_tag
 
     float prev_x;
     float prev_y;
+    float divider;
 
     bool last_lidar_status;
-
-    int divider;
 
     String road_sign_from_model;
 
@@ -130,6 +130,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     general_instance.obs_data.clear();
 
     data_validator |= 0b010;
+
+    general_instance.is_lidar_free = msg->is_lidar_free;
 
     if (msg->x.size() == 0)
     {
@@ -262,7 +264,8 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 
     if (general_instance.left_available && general_instance.middle_available && general_instance.right_available)
     {
-        general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
+        // general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
+        general_instance.divider = pixel_to_real(83);
     }
 }
 

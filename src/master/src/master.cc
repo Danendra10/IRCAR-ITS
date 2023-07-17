@@ -500,7 +500,7 @@ void DecideCarTarget(general_data_ptr general_data)
                 obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
             else if (general_data->middle_available)
                 obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-            // Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
+            // Logger(BLUE, "obs --- left %f right %f || dist --- left %f right %f", left_obs_y, right_obs_y, obs_from_left_target, obs_from_right_target);
 
             if ((obs_from_left_target - obs_from_right_target) > 0.05)
                 general_data->car_side = 10;
@@ -515,19 +515,19 @@ void DecideCarTarget(general_data_ptr general_data)
             if (general_data->left_available && general_data->middle_available)
             {
                 Logger(CYAN, "KIRI TENGAH");
-                general_data->car_target.x = (general_data->car_target_left.x + general_data->car_target_middle.x) / 2.0;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y) / 2.0 - general_data->spacer_real_y;
             }
             else if (general_data->left_available)
             {
                 Logger(CYAN, "KIRI");
-                general_data->car_target.x = general_data->car_target_left.x;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = general_data->car_target_left.y + general_data->divider - general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH");
-                general_data->car_target.x = general_data->car_target_middle.x;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
             }
 
@@ -538,19 +538,19 @@ void DecideCarTarget(general_data_ptr general_data)
             if (general_data->right_available && general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH KANAN");
-                general_data->car_target.x = (general_data->car_target_right.x + general_data->car_target_middle.x) / 2.0;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
             }
             else if (general_data->right_available)
             {
                 Logger(CYAN, "KANAN");
-                general_data->car_target.x = general_data->car_target_right.x;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH");
-                general_data->car_target.x = general_data->car_target_middle.x;
+                general_data->car_target.x = lidar_range / 3.0;
                 general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
             }
 
@@ -587,11 +587,11 @@ void DecideCarTarget(general_data_ptr general_data)
         general_data->prev_y = general_data->car_pose.y;
         general_data->last_lidar_status = true;
     }
-    else if (!general_data->obs_status && general_data->last_lidar_status)
+    else if (general_data->last_lidar_status && general_data->is_lidar_free)
     {
-
+        Logger(MAGENTA, "KEEP FORWARD");
         general_data->car_target.y = 0;
-        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 1)
+        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
         {
             general_data->last_lidar_status = false;
         }
@@ -631,9 +631,13 @@ void RobotMovement(general_data_ptr data)
 
     float delta = atan(2 * l * sin(alpha) / ld);
     vel_linear = 20;
-    if (data->obs_status == true)
+    if (abs(data->car_target.y) > 4)
+    {
+        Logger(CYAN, "SLOWED DOWN");
+        vel_linear *= 0.5;
+    }
+    else if (data->obs_status == true)
         vel_linear *= 0.65;
-
     if (data->car_target.y < 0)
         vel_angular = (delta)*vel_linear / 0.2;
     else

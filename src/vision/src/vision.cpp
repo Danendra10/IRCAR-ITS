@@ -93,16 +93,18 @@ void Tim30HzCllbck(const ros::TimerEvent &event)
     Mat frame_resize;
     Mat frame_gray_resize;
     Mat frame_remapped = Mat(DST_REMAPPED_HEIGHT, DST_REMAPPED_WIDTH, CV_8UC1);
-
-    resize(raw_frame, frame_resize, Size(cam_params.image_width, cam_params.image_height));
-    cvtColor(frame_resize, frame_gray_resize, COLOR_BGR2GRAY);
-
-    InversePerspective(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, frame_gray_resize.data, maptable, frame_remapped.data);
-
     Mat line_bgr;
-    cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
 
-    Detect(line_bgr);
+    if (!raw_frame.empty())
+    {
+        resize(raw_frame, frame_resize, Size(cam_params.image_width, cam_params.image_height));
+        cvtColor(frame_resize, frame_gray_resize, COLOR_BGR2GRAY);
+        InversePerspective(DST_REMAPPED_WIDTH, DST_REMAPPED_HEIGHT, frame_gray_resize.data, maptable, frame_remapped.data);
+        cvtColor(frame_remapped, line_bgr, COLOR_GRAY2BGR);
+    }
+
+    if (!line_bgr.empty())
+        Detect(line_bgr);
 
     waitKey(1);
 }
@@ -114,7 +116,7 @@ void click_event(int event, int x, int y, int flags, void *params)
     if (event == EVENT_LBUTTONDOWN)
     {
         float distance_on_frame = sqrt(pow((x - 400), 2) + pow((800 - y), 2));
-        printf("CLICKED x %d y %d dist %f\n\n", x - 400, 800 - y, distance_on_frame);
+        Logger(CYAN, "CLICKED x %d y %d dist %f --> real x %f y %f\n\n", 800 - y, x - 400, distance_on_frame, pixel_to_real(800 - y), pixel_to_real(x - 400));
     }
 }
 void record()
@@ -243,6 +245,7 @@ void Detect(cv::Mat frame)
         // Logger(CYAN, "Showing result");
         cv::resize(result, result_resized, cv::Size(400, 400));
         cv::imshow("result", result_resized);
+        // cv::setMouseCallback("result", click_event);
     }
 }
 
@@ -482,7 +485,8 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
 
     // Logger(RED, "spike : %d", spike);
 
-    center_x_base.resize(spike);
+    if (spike != 0)
+        center_x_base.resize(spike);
 
     for (int i = 0; i < spike; i++)
     {
