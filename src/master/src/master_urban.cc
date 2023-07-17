@@ -57,17 +57,35 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
         float angle_error = target_angle - general_instance.car_pose.th;
         printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
         AngularControl(angle_error, 0.2);
-        motion_return.linear = 1;
+        motion_return.linear = 2;
+        TransmitAll();
+        return;
+    }
+    else if (general_instance.sign_type == SIGN_LEFT)
+    {
+        static float current_angle = general_instance.car_pose.th;
+        static float target_angle;
+        if (current_angle > 270 || current_angle < 90)
+        {
+            target_angle = 90;
+        }
+        else
+        {
+            target_angle = 180;
+        }
+        float angle_err = target_angle - general_instance.car_pose.th;
+        AngularControl(angle_err, 0.2);
+        motion_return.linear = 2;
         TransmitAll();
         return;
     }
     if (general_instance.angle_error != 0)
     {
-        AngularControl(general_instance.angle_error, 2);
-        motion_return.linear = 2;
+        AngularControl(general_instance.angle_error, 1);
+        motion_return.linear = 1;
         cout << "linear: " << motion_return.linear << endl;
         cout << "angular: " << motion_return.angular << endl;
-        // TransmitAll();
+        TransmitAll();
     }
 }
 
