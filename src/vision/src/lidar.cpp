@@ -37,14 +37,14 @@ ros::Publisher pub_lidar_data;
 
 //============================================================
 
-void SubOdomCllbck(const nav_msgs::OdometryConstPtr& odom);
-void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr& msg);
+void SubOdomCllbck(const nav_msgs::OdometryConstPtr &odom);
+void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg);
 
-void CllbckMainTimer(const ros::TimerEvent& event);
+void CllbckMainTimer(const ros::TimerEvent &event);
 
 //============================================================
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     ros::init(argc, argv, "sensor");
     ros::NodeHandle nh;
@@ -60,29 +60,32 @@ int main(int argc, char** argv)
     MTS.spin();
 }
 
-void CllbckMainTimer(const ros::TimerEvent& event)
+void CllbckMainTimer(const ros::TimerEvent &event)
 {
 }
 
-void SubOdomCllbck(const nav_msgs::OdometryConstPtr& odom)
+void SubOdomCllbck(const nav_msgs::OdometryConstPtr &odom)
 {
     car_pose.x = odom->pose.pose.position.x;
     car_pose.y = odom->pose.pose.position.y;
     car_pose.th = RAD2DEG(2 * atan2(odom->pose.pose.orientation.z, odom->pose.pose.orientation.w));
-    if (car_pose.th < 0) {
+    if (car_pose.th < 0)
+    {
         car_pose.th += 360;
     }
     // printf("car pose || %.2f %.2f %.2f\n", car_pose.x, car_pose.y, car_pose.th);
 }
 
-void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr& msg)
+void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
 {
     msg_collection::Obstacles raw_obstacles;
     ranges = msg->ranges;
-    for (int i = 0; i < ranges.size(); i++) {
+    for (int i = 0; i < ranges.size(); i++)
+    {
         float curr_range = ranges[i];
         float obs_x, obs_y;
-        if (ranges[i] < 20) {
+        if (ranges[i] < 15)
+        {
             // based on car perspective
             obs_y = cos(DEG2RAD(i)) * curr_range;
             obs_x = sin(DEG2RAD(i)) * curr_range;

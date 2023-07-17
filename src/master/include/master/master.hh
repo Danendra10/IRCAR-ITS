@@ -122,6 +122,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     general_instance.raw_obs_data.clear();
     general_instance.obs_data.clear();
 
+    data_validator |= 0b010;
+
     if (msg->x.size() == 0)
     {
         general_instance.obs_status = false;
@@ -147,8 +149,6 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     }
 
     // printf("obs status %d\n", general_instance.obs_status);
-
-    data_validator |= 0b010;
 }
 
 void CllbckSubCarData(const sensor_msgs::JointState::ConstPtr &msg, general_data_ptr general_instance)
@@ -173,6 +173,7 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
 
 void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
 {
+    data_validator |= 0b001;
 
     general_instance.buffer_target_x = msg->target_x;
     general_instance.buffer_target_y = msg->target_y;
@@ -254,14 +255,12 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     {
         general_instance.divider = (int)(abs(general_instance.car_target_left.y - general_instance.car_target_right.y) / 4.0);
     }
-
-    data_validator |= 0b001;
 }
 
 void CllbckSubRoadSign(const std_msgs::UInt16ConstPtr &msg)
 {
-    general_instance.sign_type = msg->data;
     data_validator |= 0b100;
+    general_instance.sign_type = msg->data;
 }
 
 void CllbckSubSignalStop(const std_msgs::UInt8ConstPtr &msg, general_data_ptr general_instance)

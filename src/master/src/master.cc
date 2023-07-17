@@ -363,57 +363,43 @@ void KeepForward(general_data_ptr general_data)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
+    // left and right from car's pov
     general_data->car_target.x = general_data->buffer_target_x;
     general_data->car_target.y = general_data->buffer_target_y;
 
+    // Logger(MAGENTA, "%f - %f = %f", general_data->car_pose.x, general_data->prev_x_odom, general_data->car_pose.x - general_data->prev_x_odom);
     // Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
     try
     {
         if (data_validator < 0b011)
             return;
 
-        // left and right from car's pov
-        float right_obs_y = general_data->raw_obs_data[0].y;
-        float left_obs_y = general_data->raw_obs_data[general_data->raw_obs_data.size() - 1].y;
-        float obs_from_left_target;
-        float obs_from_right_target;
+        float obs_from_left_target, obs_from_right_target;
 
-        if (general_data->left_available && general_data->middle_available)
-        {
-            obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
-        }
-        else if (general_data->left_available)
-        {
-            obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
-        }
-        else if (general_data->middle_available)
-        {
-            obs_from_left_target = abs(left_obs_y - (general_data->car_target_middle.y - 2 * general_data->divider));
-        }
-
-        if (general_data->right_available && general_data->middle_available)
-        {
-            obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-        }
-        else if (general_data->right_available)
-        {
-            obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-        }
-        else if (general_data->middle_available)
-        {
-            obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-        }
-
-        // ROS_INFO("from left %f || from right %f\n", obs_from_left_target, obs_from_right_target);
         if (!general_data->obs_status)
             general_data->car_side = 0;
+
         else
         {
+            float right_obs_y = general_data->raw_obs_data[0].y;
+            float left_obs_y = general_data->raw_obs_data[general_data->raw_obs_data.size() - 1].y;
+
+            if (general_data->left_available)
+                obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
+            else if (general_data->middle_available)
+                obs_from_left_target = abs(left_obs_y - (general_data->car_target_middle.y - 2 * general_data->divider));
+            if (general_data->right_available)
+                obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
+            else if (general_data->middle_available)
+                obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
+            Logger(BLUE, "left %f || right %f", left_obs_y, right_obs_y);
+
             if (obs_from_left_target > obs_from_right_target)
                 general_data->car_side = 10;
-            else if (obs_from_left_target < obs_from_right_target)
+            else if ((obs_from_right_target - obs_from_left_target) > 0.01)
                 general_data->car_side = 20;
         }
+
         switch (general_data->car_side)
         {
         case 10:
@@ -436,6 +422,7 @@ void DecideCarTarget(general_data_ptr general_data)
                 general_data->car_target.x = general_data->car_target_middle.x;
                 general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
             }
+
             break;
 
         case 20:
@@ -458,16 +445,15 @@ void DecideCarTarget(general_data_ptr general_data)
                 general_data->car_target.x = general_data->car_target_middle.x;
                 general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
             }
+
             break;
 
         default:
-            // printf("TENGAH\n");
-
             break;
         }
 
         // Logger(BLUE, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
-
+        // Logger(YELLOW, "READYYYYYYY %d", general_instance.isReady);
         // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
 
         // ROS_INFO("target %f %f %f\n", general_data->car_target_left.x, general_data->car_target_left.y, general_data->car_target_left.th);
@@ -497,7 +483,7 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         general_data->car_target.y = 0;
         Logger(RED, "TEMP FORWARD");
-        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 2)
+        if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 1)
         {
             general_data->last_lidar_status = false;
         }
@@ -536,9 +522,10 @@ void RobotMovement(general_data_ptr data)
     float l = 2.8;
 
     float delta = atan(2 * l * sin(alpha) / ld);
-    vel_linear = 9;
+    vel_linear = 10;
     if (data->obs_status == true)
-        vel_linear *= 0.6;
+        vel_linear *= 0.8;
+
     if (data->car_target.y < 0)
         vel_angular = (delta)*vel_linear / 0.2;
     else
