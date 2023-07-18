@@ -113,6 +113,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         last_id = -1;
     }
+    printf("Threshold: %d\n", threshold_to_delete_last_id);
     static float area_of_marker;
     // printf("Last ID: %d %f %d \n", last_id, area_of_marker, counter);
     // if (counter < threshold_counter_road_sign)
@@ -123,7 +124,6 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         printf("No marker detected\n");
         msg.data = last_id;
-        cout << __LINE__ << endl;
         pub_detected_sign_data.publish(msg);
         return;
     }
@@ -146,6 +146,8 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     else
         area_of_marker = 0;
 
+    area_of_marker = (area_of_marker < 0) ? -area_of_marker : area_of_marker;
+
     if (area_of_marker > 2000 && area_of_marker < 4000)
     {
         last_id = marker_ids[min_index];
@@ -154,20 +156,12 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     else
         msg.data = last_id;
     pub_detected_sign_data.publish(msg);
-    // }
-    // else
-    // {
-    //     std_msgs::UInt16 msg;
-    //     if (area_of_marker > 2550)
-    //         msg.data = last_id;
-    //     else
-    //         msg.data = 8;
-    //     pub_detected_sign_data.publish(msg);
-    // }
 
 #ifdef SHOW_FRAME
     string ids = "ID: " + to_string(last_id);
+    string area = "Area: " + to_string(area_of_marker);
     putText(output_image, ids, center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+    putText(output_image, area, Point2f(center.x, center.y + 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
     // imshow("thresholded", thresholded);
     // imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);

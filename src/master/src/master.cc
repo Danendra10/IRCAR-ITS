@@ -11,6 +11,7 @@
 
 // #define DRIVE
 #define TRANSMIT_VELOCITY
+#define PUBLISH_VEL
 
 int main(int argc, char **argv)
 {
@@ -69,101 +70,119 @@ void DriveUrban()
     static float current_angle = general_instance.car_pose.th;
     static float target_angle_right = current_angle - 90;
     static float target_angle_left = current_angle + 90;
+    static float target_angle_forward;
+
     if (general_instance.prev_sign_type != general_instance.sign_type && (general_instance.prev_sign_type == -1 || general_instance.prev_sign_type == 8))
     {
+        Logger(RED, "UPDATING ALL VARIABLES");
         start_time = ros::Time::now().toSec();
         current_angle = general_instance.car_pose.th;
-        // todo: butuh predefined target saja
-        if (current_angle > 275 && current_angle < 45)
-            target_angle_right = current_angle - 90;
-        target_angle_left = current_angle + 90;
-        general_instance.prev_sign_type = general_instance.sign_type;
-    }
-    // printf("general_instance.sign_type: %d %d\n", general_instance.sign_type, general_instance.prev_sign_type);
-    if (general_instance.sign_type == SIGN_RIGHT)
-    {
-        printf("Time : %f\n", ros::Time::now().toSec() - start_time);
-        if (target_angle_right < 0)
+
+        target_angle_right = current_angle + 90;
+        target_angle_left = current_angle - 90;
+
+        if (current_angle > 45)
+        {
+            target_angle_forward = (current_angle > 135) ? 180 : 90;
+        }
+        else if (current_angle < -45)
+        {
+            target_angle_forward = (current_angle < -135) ? -180 : -90;
+        }
+        else
+        {
+            target_angle_forward = 0;
+        }
+
+        while (target_angle_right < -180)
             target_angle_right += 360;
-        else if (target_angle_right > 360)
+        while (target_angle_right > 180)
             target_angle_right -= 360;
 
-        float angle_error = general_instance.car_pose.th - target_angle_right;
+        while (target_angle_left < -180)
+            target_angle_left += 360;
+        while (target_angle_left > 180)
+            target_angle_left -= 360;
 
-        // if (angle_error > 360)
-        //     angle_error -= 360;
-        // else if (angle_error < 0)
-        //     angle_error += 360;
+        general_instance.prev_sign_type = general_instance.sign_type;
+    }
+
+    Logger(MAGENTA, "Sign Type : %d %d Time : %f", general_instance.sign_type, general_instance.prev_sign_type, ros::Time::now().toSec() - start_time);
+
+    if (general_instance.sign_type == SIGN_RIGHT)
+    {
+        float angle_error = target_angle_right - general_instance.car_pose.th;
+
+        while (angle_error < -180)
+            angle_error += 360;
+        while (angle_error > 180)
+            angle_error -= 360;
 
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
-            printf("RIGHT\n");
+            motion_return.linear = 4.5;
+            motion_return.angular = 0;
+            TransmitData(&general_instance);
+            return;
+        }
+
+        if (fabs(angle_error) < 5)
+        {
+            general_instance.sign_type = NO_SIGN;
+            goto withoutSign;
+        }
+
+        AngularControl(angle_error, -0.8);
+        motion_return.linear = 3;
+
+        TransmitData(&general_instance);
+        return;
+    }
+
+    else if (general_instance.sign_type == SIGN_FORWARD)
+    {
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(8).toSec())
+        {
+            printf("FORWARD\n");
+            motion_return.linear = 3;
+            motion_return.angular = 0;
+            TransmitData(&general_instance);
+            return;
+        }
+    }
+
+    else if (general_instance.sign_type == SIGN_LEFT)
+    {
+        float angle_error = target_angle_left - general_instance.car_pose.th;
+
+        while (angle_error < -180)
+            angle_error += 360;
+        while (angle_error > 180)
+            angle_error -= 360;
+
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        {
+            printf("left\n");
             motion_return.linear = 3.5;
             motion_return.angular = 0;
             TransmitData(&general_instance);
             return;
         }
 
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_left);
         if (fabs(angle_error) < 5)
         {
             general_instance.sign_type = NO_SIGN;
             goto withoutSign;
         }
 
-        AngularControl(angle_error, 0.8);
+        AngularControl(angle_error, -0.8);
         motion_return.linear = 3;
 
         TransmitData(&general_instance);
         return;
     }
-    else if (general_instance.sign_type == SIGN_FORWARD)
-    {
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(5).toSec())
-        {
-            // printf("forward\n");
-            motion_return.linear = 10;
-            motion_return.angular = 0;
-            TransmitData(&general_instance);
-            return;
-        }
-        return;
-    }
-    else if (general_instance.sign_type == SIGN_LEFT)
-    {
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
-        {
-            // printf("left\n");
-            motion_return.linear = 10;
-            TransmitData(&general_instance);
-            return;
-        }
-
-        if (target_angle_left < 0)
-            target_angle_left += 360;
-        else if (target_angle_left > 360)
-            target_angle_left -= 360;
-
-        float angle_error = target_angle_left - general_instance.car_pose.th;
-
-        if (angle_error > 180)
-            angle_error -= 360;
-        else if (angle_error < -180)
-            angle_error += 360;
-
-        if (fabs(angle_error) < 5)
-        {
-            general_instance.sign_type = NO_SIGN;
-            goto withoutSign;
-        }
-
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_left);
-        AngularControl(angle_error, 0.5);
-        motion_return.linear = 3;
-        TransmitData(&general_instance);
-        return;
-    }
-    else if (general_instance.sign_type == SIGN_STOP)
+    if (general_instance.sign_type == SIGN_STOP)
     {
         motion_return.linear = 0;
         motion_return.angular = 0;
@@ -250,241 +269,10 @@ void SimulatorState()
     }
 }
 
-void AutoDrive(general_data_ptr data)
-{
-    try
-    {
-        if (data_validator < 0b111)
-            return;
-
-        static bool is_unlocked = true; // Initialize the locked state variable
-
-        if (data->prev_sign_type != NO_SIGN && data->sign_type == NO_SIGN)
-            is_unlocked = true;
-        else
-            is_unlocked = false;
-
-        // Logger(RED, "is_unlocked: %d || Detected a sign %d", is_unlocked, data->sign_type);
-
-        switch (data->sign_type)
-        {
-        case NO_SIGN:
-            if (is_unlocked)
-            {
-                // Logger(RED, "No Sign Detected");
-                // DecideCarTarget(data);
-            }
-            break;
-        case SIGN_RIGHT:
-            if (is_unlocked)
-                is_unlocked = false;
-            // Logger(RED, "Entered State Sign Right");
-            if (TurnCarRight90Degree2(data, 0.5, 10) && !is_unlocked)
-            {
-                // Logger(RED, "Detected a Right Sign");
-                is_unlocked = true;
-                data->sign_type = NO_SIGN;
-            }
-            break;
-        }
-
-        data->prev_sign_type = data->sign_type;
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << e.what() << '\n';
-    }
-    catch (...)
-    {
-        std::cout << "Error cought in line: " << __LINE__ << std::endl;
-    }
-}
-
-void StopRobot(general_data_ptr data)
-{
-    data->car_vel.x = 0;
-    data->car_vel.th = 0;
-}
-
-bool StopRobot(general_data_ptr data, float time_to_stop)
-{
-    static double time_1 = ros::Time::now().toSec();
-    double current_time = ros::Time::now().toSec();
-
-    if (current_time - time_1 < time_to_stop)
-    {
-        data->car_vel.x = 0;
-        data->car_vel.th = 0;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-/**
- * TODO: Check the sign distance, if it's too far, don't turn @danendra10
- */
-void TurnCarLeft90Degree(general_data_ptr general_data)
-{
-    // Stop the car
-    general_data->car_vel.x = 0;
-    general_data->car_vel.th = 0;
-
-    /**
-     * Wait for a certain period of time to ensure the car has stopped,
-     * don't make it turn while it's still moving, it will mess up the turn
-     */
-    ros::Duration(0.5).sleep();
-
-    /**
-     * Turn the car left by 90 degrees
-     * The desired heading is the current heading + 90 degrees
-     */
-    float desired_heading = general_data->car_pose.th + (M_PI / 2.0); // Add 90 degrees (pi/2) to the current heading
-
-    if (desired_heading > M_PI)
-        desired_heading -= (2 * M_PI);
-    else if (desired_heading < -M_PI)
-        desired_heading += (2 * M_PI);
-
-    general_data->car_target_left.x = general_data->car_pose.x;
-    general_data->car_target_left.y = general_data->car_pose.y;
-    general_data->car_target_left.th = desired_heading;
-
-    RobotMovement(general_data);
-}
-
-void TurnCarRight90Degree(general_data_ptr general_data)
-{
-    // Stop the car
-    // and duration of stop is more than 1 second
-    // declare the stop time
-    static double time_1 = ros::Time::now().toSec();
-    double current_time = ros::Time::now().toSec();
-    // double delta_time = current_time - stop_time;
-    // printf("delta time: %f\n", delta_time);
-    // if (general_data->signal_stop == 1 && delta_time < 1.0)
-    // {
-    //     general_data->car_vel.x = 0;
-    //     general_data->car_vel.th = 0;
-
-    //     /**
-    //      * Wait for a certain period of time to ensure the car has stopped,
-    //      * don't make it turn while it's still moving, it will mess up the turn
-    //      */
-    //     ros::Duration(0.5).sleep();
-    //     return;
-    // }
-
-    /**
-     * Turn the car right by 90 degrees
-     * The desired heading is the current heading - 90 degrees
-     */
-    float desired_heading = general_data->car_pose.th + RAD2DEG(M_PI / 2.0); // Subtract 90 degrees (pi/2) from the current heading
-
-    // desired heading is in degree
-    if (desired_heading > 180)
-        desired_heading -= 360;
-    else if (desired_heading < -180)
-        desired_heading += 360;
-
-    desired_heading = DEG2RAD(desired_heading);
-
-    general_data->car_vel.x = 1;
-    general_data->car_vel.th = -0.5;
-
-    // general_data->car_target_left.x = general_data->car_pose.x + 0.5 * cos(desired_heading);
-    // general_data->car_target_left.y = general_data->car_pose.y + 0.5 * sin(desired_heading);
-    // general_data->car_target_left.th = desired_heading;
-
-    // general_data->car_target_left.x = general_data->car_pose.x;
-    // general_data->car_target_left.y = general_data->car_pose.y;
-    // general_data->car_target_left.th = desired_heading;
-
-    float time_to_turn = 3.0;
-
-    // UrbanMovement(general_data);
-}
-
 void SetRobotSteering(general_data_ptr general_data, float steering)
 {
     general_data->car_vel.x = 0.5;
     general_data->car_vel.th = steering;
-}
-
-bool TurnCarRight90Degree2(general_data_ptr general_data, float steering, float time_to_turn)
-{
-    if (StopRobot(general_data, 1.0))
-    {
-
-        static double time_1 = ros::Time::now().toSec();
-        double current_time = ros::Time::now().toSec();
-        if (current_time - time_1 < time_to_turn)
-        {
-            printf("time: %f\n", current_time - time_1);
-            // SetRobotSteering(general_data, steering);
-        }
-        else
-        {
-            return true;
-        }
-    }
-}
-
-void KeepForward(general_data_ptr general_data)
-{
-    // Stop the car
-    general_data->car_vel.x = 0;
-    general_data->car_vel.th = 0;
-
-    /**
-     * Wait for a certain period of time to ensure the car has stopped,
-     * don't make it turn while it's still moving, it will mess up the turn
-     */
-    ros::Duration(0.5).sleep();
-
-    /**
-     * Check if the robot's angle is linear with the angle of the lane first
-     * If it is linear, keep moving forward
-     * If it is not linear, adjust the target to align with the lane's angle
-     */
-    // int middle_lane_size = general_data->middle_lane.size();
-    // int left_lane_size = general_data->left_lane.size();
-    // int right_lane_size = general_data->right_lane.size();
-    // int dist_between_points = general_data->middle_lane[middle_lane_size - 1].x - general_data->middle_lane[middle_lane_size - 5].x;
-
-    // int size_of_middle_lane_close_to_robot = SizeOfLane(general_data->middle_lane, 0, 30);
-
-    // if (size_of_middle_lane_close_to_robot == -1) {
-    //     // keep forward
-    //     general_data->car_target_left.x = general_data->car_pose.x + 0.5;
-    //     general_data->car_target_left.y = general_data->car_pose.y;
-    //     general_data->car_target_left.th = general_data->car_pose.th;
-    // }
-
-    // // Check if the robot's angle is linear with the angle of the lane
-    // if (middle_lane_size > 400 && abs(dist_between_points) < 20) {
-    //     // The robot's angle is linear with the angle of the lane, keep moving forward
-    //     general_data->car_target_left.x = general_data->car_pose.x;
-    //     general_data->car_target_left.y = general_data->car_pose.y;
-    //     general_data->car_target_left.th = general_data->car_pose.th;
-    // } else {
-    //     // The robot's angle is not linear with the angle of the lane, adjust the target to align with the lane's angle
-    //     if ((general_data->car_side == 10 && left_lane_size > 0) || (general_data->car_side == 20 && right_lane_size > 0)) {
-    //         general_data->car_target_left.x = (general_data->middle_lane_real[middle_lane_size - 1].x + general_data->car_pose.x) / 2;
-    //         general_data->car_target_left.y = (general_data->middle_lane_real[middle_lane_size - 1].y + general_data->car_pose.y) / 2;
-    //         general_data->car_target_left.th = atan2(general_data->car_target_left.y - general_data->car_pose.y, general_data->car_target_left.x - general_data->car_pose.x);
-    //     } else {
-    //         // The robot's angle is not linear and no specific side is determined, keep moving forward
-    //         general_data->car_target_left.x = general_data->car_pose.x;
-    //         general_data->car_target_left.y = general_data->car_pose.y;
-    //         general_data->car_target_left.th = general_data->car_pose.th;
-    //     }
-    // }
-
-    // Call the RobotMovement function with the updated target to keep the car moving forward
-    RobotMovement(general_data);
 }
 
 void DecideCarTarget(general_data_ptr general_data)
@@ -580,6 +368,28 @@ void DecideCarTarget(general_data_ptr general_data)
             break;
         }
 
+        // if (is_urban)
+        // {
+        //     if (general_data->right_available && general_data->middle_available)
+        //     {
+        //         Logger(CYAN, "TENGAH KANAN");
+        //         general_data->car_target.x = lidar_range / 3.0;
+        //         general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
+        //     }
+        //     else if (general_data->right_available)
+        //     {
+        //         Logger(CYAN, "KANAN");
+        //         general_data->car_target.x = lidar_range / 3.0;
+        //         general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
+        //     }
+        //     else if (general_data->middle_available)
+        //     {
+        //         Logger(CYAN, "TENGAH");
+        //         general_data->car_target.x = lidar_range / 3.0;
+        //         general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
+        //     }
+        // }
+
         // Logger(BLUE, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
         // Logger(YELLOW, "READYYYYYYY %d", general_instance.isReady);
         // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
@@ -609,7 +419,7 @@ void DecideCarTarget(general_data_ptr general_data)
     }
     else if (general_data->last_lidar_status && general_data->is_lidar_free)
     {
-        Logger(MAGENTA, "KEEP FORWARD");
+        // Logger(MAGENTA, "KEEP FORWARD");
         general_data->car_target.y = 0;
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
         {
@@ -651,7 +461,7 @@ void RobotMovement(general_data_ptr data)
         vel_linear = 20;
         if (abs(data->car_target.y) > 4)
         {
-            Logger(CYAN, "SLOWED DOWN");
+            // Logger(CYAN, "SLOWED DOWN");
             vel_linear *= 0.5;
         }
         else if (data->obs_status == true)
@@ -694,9 +504,13 @@ void TransmitData(general_data_ptr data)
     {
         buffer_angular = motion_return.angular;
     }
+
+    // printf("linear : %f | angular : %f | Angular Negative %d\n", buffer_linear, buffer_angular, angular_negative);
     vel_msg.linear.x = buffer_linear;
     vel_msg.angular.z = buffer_angular;
+#ifdef PUBLISH_VEL
     data->pub_car_vel.publish(vel_msg);
+#endif
 
     //============
     // command sent choose whether vision running standalone or being ordered master

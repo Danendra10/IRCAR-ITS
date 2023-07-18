@@ -175,11 +175,18 @@ void CllbckSubCarPose(const geometry_msgs::Point::ConstPtr &msg)
     general_instance.car_pose.x = msg->x;
     general_instance.car_pose.y = msg->y;
     general_instance.car_pose.th = msg->z;
-    // printf("%f %f %f\n", general_instance.car_pose.x, general_instance.car_pose.y, general_instance.car_pose.th);
     // while (general_instance.car_pose.th < 0)
     //     general_instance.car_pose.th += 360;
     // while (general_instance.car_pose.th > 360)
     //     general_instance.car_pose.th -= 360;
+
+    while (general_instance.car_pose.th > 180)
+        general_instance.car_pose.th -= 360;
+    while (general_instance.car_pose.th < -180)
+        general_instance.car_pose.th += 360;
+
+    general_instance.car_pose.th *= -1;
+    // printf("%f %f %f\n", general_instance.car_pose.x, general_instance.car_pose.y, general_instance.car_pose.th);
 }
 
 void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
