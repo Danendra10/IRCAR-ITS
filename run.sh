@@ -13,13 +13,13 @@ if [ $? -ne 0 ]; then
     exit
 fi
 
-echo "Running in real mode"
+# echo "Running in real mode"
 
 # if the first argument is 1 then run in real mod
 if [ "$1" = "1" ]; then
     echo "Running in real mode"
     roslaunch master master.launch is_urban:=1
-else
-    echo "Running in simulation mode"
-    roslaunch master master.launch is_urban:=0
+else 
+    echo "Running in race mode with vel = $1"
+    roslaunch master master.launch is_urban:=0 vel:=$1
 fi

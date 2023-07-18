@@ -1,5 +1,6 @@
 <launch>
     <param name="is_urban" type="bool" value="$(arg is_urban)" />
+    <param name="vel" type="int" value="$(arg vel)" />
     <group if="$(arg is_urban)">
         <node name="road_sign_detector" pkg="vision" type="road_sign_detector" output="screen" respawn="true" />
     </group>

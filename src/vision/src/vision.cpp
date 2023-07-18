@@ -80,7 +80,7 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     double heading = yaw;
 
     double heading_deg = std::fmod(RAD2DEG(heading) + 360.0, 360.0);
-    printf("heading: %f\n", heading_deg);
+    // printf("heading: %f\n", heading_deg);
 
     // car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
 
@@ -215,25 +215,40 @@ void Detect(cv::Mat frame)
         cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 7);
         cv::bitwise_and(frame_road_thresh, frame_thresh, frame_thresh);
         // if (!frame_thresh.empty())
-        // cv::imshow("line thresh", frame_thresh);
+        //     cv::imshow("line thresh", frame_thresh);
         // cv::imshow("side thresh", frame_side_thresh);
         // if (!frame_road_thresh.empty())
-        // cv::imshow("road thresh", frame_road_thresh);
+        //     cv::imshow("road thresh", frame_road_thresh);
     }
     else
     {
-        cv::threshold(frame_gray, frame_thresh, 55, 255, cv::THRESH_BINARY);
+        cv::threshold(frame_gray, frame_thresh, 55, 255, cv::THRESH_BINARY);          // for line
+        cv::threshold(frame_gray, frame_side_thresh, 5, 255, cv::THRESH_BINARY);      // for black side of IPM
+        cv::threshold(frame_gray, frame_road_thresh, 55, 255, cv::THRESH_BINARY_INV); // for road
+        cv::bitwise_and(frame_side_thresh, frame_road_thresh, frame_road_thresh);
+        cv::erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
+        cv::dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 5);
+        cv::erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 4);
+        cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 2);
+        cv::dilate(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 8);
+        cv::erode(frame_road_thresh, frame_road_thresh, Mat(), Point(-1, -1), 6);
+        cv::bitwise_and(frame_road_thresh, frame_thresh, frame_thresh);
+        // if (!frame_thresh.empty())
+        //     cv::imshow("line thresh", frame_thresh);
+        // cv::imshow("side thresh", frame_side_thresh);
+        // if (!frame_road_thresh.empty())
+        //     cv::imshow("road thresh", frame_road_thresh);
     }
     erode(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     dilate(frame_thresh, frame_thresh, Mat(), Point(-1, -1), 1);
     ROI(frame_thresh);
-    if (is_urban && !frame_thresh.empty())
-    // cv::imshow("threshold ROI", frame_thresh);
+    // if (is_urban && !frame_thresh.empty())
+    //     cv::imshow("threshold ROI", frame_thresh);
 #endif
 
 #ifdef edge_detection
-        //==Option Edge
-        cv::Canny(frame_gray, frame_canny, 25, 50);
+    //==Option Edge
+    cv::Canny(frame_gray, frame_canny, 25, 50);
     dilate(frame_canny, frame_canny, Mat(), Point(-1, -1), 6);
     erode(frame_canny, frame_canny, Mat(), Point(-1, -1), 4);
     ROI(frame_canny);
@@ -271,12 +286,8 @@ void Detect(cv::Mat frame)
     {
         // Logger(CYAN, "Showing result");
         cv::resize(result, result_resized, cv::Size(400, 400));
-<<<<<<< HEAD
-        // cv::imshow("result", result_resized);
-=======
         cv::imshow("result", result_resized);
         // cv::setMouseCallback("result", click_event);
->>>>>>> master
     }
 }
 
@@ -352,7 +363,7 @@ std::vector<cv::Vec4i> SlidingWindows(cv::Mat &frame, std::vector<int> x_final, 
     // Logger(CYAN, "Entering Sliding Windows Calculation");
     std::vector<cv::Rect> windows;
     const int num_windows = 9;
-    const int margin = 50;
+    const int margin = 60;
     const int min_px = 100;
     int window_height = (int)((750 - 500) / (float)num_windows); // from ROI
     std::vector<int> current_x;
@@ -535,8 +546,8 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
         }
 
         //==Debug Sliding Windows Coverage with Noise
-        // cv::circle(frame_dst, cv::Point(center_x_base[i], 720), 3, cv::Scalar(255, 0, 0), 10);
-        // cv::circle(frame_dst, cv::Point(center_x_base[i], 460), 3, cv::Scalar(255, 0, 0), 10);
+        cv::circle(frame_dst, cv::Point(center_x_base[i], 720), 3, cv::Scalar(255, 0, 0), 10);
+        cv::circle(frame_dst, cv::Point(center_x_base[i], 460), 3, cv::Scalar(255, 0, 0), 10);
     }
 
     // Logger(CYAN, "spike : %d | counter : %d", spike, counter);
@@ -544,10 +555,11 @@ void BinaryStacking(cv::Mat frame, cv::Mat &frame_dst)
     spike_final = spike - counter;
 
     //==Debug Sliding Windows Coverage Final
-    // for (int i = 0; i < spike_final; i++) {
-    //     cv::circle(frame_dst, cv::Point(center_x_final[i], 700), 3, cv::Scalar(i * 50, 255, 0), 10);
-    //     cv::circle(frame_dst, cv::Point(center_x_final[i], 440), 3, cv::Scalar(i * 50, 255, 0), 10);
-    // }
+    for (int i = 0; i < spike_final; i++)
+    {
+        cv::circle(frame_dst, cv::Point(center_x_final[i], 700), 3, cv::Scalar(i * 50, 255, 0), 10);
+        cv::circle(frame_dst, cv::Point(center_x_final[i], 440), 3, cv::Scalar(i * 50, 255, 0), 10);
+    }
 
     std::vector<cv::Vec4i> in_points = SlidingWindows(frame_dst, center_x_final, nonzero_x, nonzero_y);
     std::vector<std::vector<cv::Vec4i>> lane(in_points.size());

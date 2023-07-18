@@ -19,6 +19,7 @@ int main(int argc, char **argv)
     ros::MultiThreadedSpinner MTS;
 
     NH.getParam("is_urban", is_urban);
+    NH.getParam("vel", vel);
 
     if (MasterInit() == -1)
     {
@@ -480,6 +481,11 @@ void KeepForward(general_data_ptr general_data)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
+    // if (general_data->obs_status)
+    //     Logger(RED, "DEKET");
+
+    // if (general_data->obs_status_far)
+    //     Logger(YELLOW, "JAUH");
     // left and right from car's pov
     general_data->car_target.x = general_data->buffer_target_x;
     general_data->car_target.y = general_data->buffer_target_y;
@@ -526,19 +532,19 @@ void DecideCarTarget(general_data_ptr general_data)
             if (general_data->left_available && general_data->middle_available)
             {
                 Logger(CYAN, "KIRI TENGAH");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y) / 2.0 - general_data->spacer_real_y;
             }
             else if (general_data->left_available)
             {
                 Logger(CYAN, "KIRI");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_left.y + general_data->divider - general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
             }
 
@@ -549,19 +555,19 @@ void DecideCarTarget(general_data_ptr general_data)
             if (general_data->right_available && general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH KANAN");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
             }
             else if (general_data->right_available)
             {
                 Logger(CYAN, "KANAN");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
                 Logger(CYAN, "TENGAH");
-                general_data->car_target.x = lidar_range / 3.0;
+                general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
             }
 
@@ -602,9 +608,11 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         Logger(MAGENTA, "KEEP FORWARD");
         general_data->car_target.y = 0;
+        general_data->keep_forward = true;
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
         {
             general_data->last_lidar_status = false;
+            general_data->keep_forward = false;
         }
     }
 }
@@ -639,14 +647,31 @@ void RobotMovement(general_data_ptr data)
     float delta = atan(2 * l * sin(alpha) / ld);
     if (!is_urban)
     {
-        vel_linear = 20;
-    if (abs(data->car_target.y) > 4)
-    {
-        Logger(CYAN, "SLOWED DOWN");
-        vel_linear *= 0.5;
-    }
-    else if (data->obs_status == true)
-        vel_linear *= 0.65;
+        vel_linear = vel;
+        if (abs(data->car_target.y) > 4)
+        {
+            Logger(CYAN, "SLOWED DOWN");
+            if (vel_linear == 10)
+            {
+                vel_linear = vel_linear;
+            }
+            else if (vel_linear == 15)
+            {
+                vel_linear *= 0.65;
+            }
+            else if (vel_linear == 20)
+            {
+                vel_linear *= 0.5;
+            }
+            else if (vel_linear == 25)
+            {
+                vel_linear *= 0.3;
+            }
+        }
+        else if (data->obs_status)
+            vel_linear *= 0.65;
+        else if (data->keep_forward)
+            vel_linear *= 0.5;
     }
     else
     {
@@ -724,13 +749,15 @@ int MasterInit()
         }
         else
         {
-            pid_linear_const.kp = config["PID_RACE"]["Linear"]["kp"].as<float>();
-            pid_linear_const.ki = config["PID_RACE"]["Linear"]["ki"].as<float>();
-            pid_linear_const.kd = config["PID_RACE"]["Linear"]["kd"].as<float>();
+            string pid_race = "PID_RACE_" + std::to_string(vel);
+            std::cout << pid_race << std::endl;
+            pid_linear_const.kp = config[pid_race]["Linear"]["kp"].as<float>();
+            pid_linear_const.ki = config[pid_race]["Linear"]["ki"].as<float>();
+            pid_linear_const.kd = config[pid_race]["Linear"]["kd"].as<float>();
 
-            pid_angular_const.kp = config["PID_RACE"]["Angular"]["kp"].as<float>();
-            pid_angular_const.ki = config["PID_RACE"]["Angular"]["ki"].as<float>();
-            pid_angular_const.kd = config["PID_RACE"]["Angular"]["kd"].as<float>();
+            pid_angular_const.kp = config[pid_race]["Angular"]["kp"].as<float>();
+            pid_angular_const.ki = config[pid_race]["Angular"]["ki"].as<float>();
+            pid_angular_const.kd = config[pid_race]["Angular"]["kd"].as<float>();
         }
     }
     catch (YAML::BadFile &e)

@@ -77,6 +77,8 @@ typedef struct general_data_tag
     bool middle_available;
     bool right_available;
     bool is_lidar_free;
+    bool last_lidar_status;
+    bool keep_forward;
 
     float buffer_target_x;
     float buffer_target_y;
@@ -87,8 +89,6 @@ typedef struct general_data_tag
     float prev_x;
     float prev_y;
     float divider;
-
-    bool last_lidar_status;
 
     String road_sign_from_model;
 
@@ -112,6 +112,7 @@ uint8_t data_validator = 0b000;
 
 const string commands[] = {"stop", "right", "left", "forward", "no entry", "right", "start tunnel", "stop"};
 bool is_urban;
+int vel;
 
 //==============================================================================
 
