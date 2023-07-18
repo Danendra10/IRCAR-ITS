@@ -68,7 +68,7 @@ typedef struct general_data_tag
     uint8_t car_side;
     uint8_t moved_state;
     int sign_type;
-    uint16_t prev_sign_type;
+    int prev_sign_type;
     uint16_t lock_state;
     uint8_t signal_stop;
 

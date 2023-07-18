@@ -18,13 +18,13 @@ int main(int argc, char **argv)
     ros::NodeHandle NH;
     ros::MultiThreadedSpinner MTS;
 
+    NH.getParam("is_urban", is_urban);
+
     if (MasterInit() == -1)
     {
         ros::shutdown();
         return -1;
     }
-
-    NH.getParam("is_urban", is_urban);
 
     general_instance.pub_car_vel = NH.advertise<geometry_msgs::Twist>("/catvehicle/cmd_vel_safe", 10);
     general_instance.pub_cmd_vision = NH.advertise<msg_collection::CmdVision>("/cmd_vision", 10);
@@ -65,32 +65,43 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
 
 void DriveUrban()
 {
+    static double start_time = ros::Time::now().toSec();
+    static float current_angle = general_instance.car_pose.th;
+    static float target_angle_right = current_angle - 90;
+    static float target_angle_left = current_angle + 90;
+    if (general_instance.prev_sign_type != general_instance.sign_type && (general_instance.prev_sign_type == -1 || general_instance.prev_sign_type == 8))
+    {
+        start_time = ros::Time::now().toSec();
+        current_angle = general_instance.car_pose.th;
+        target_angle_right = current_angle - 90;
+        target_angle_left = current_angle + 90;
+        general_instance.prev_sign_type = general_instance.sign_type;
+    }
+    // printf("general_instance.sign_type: %d %d\n", general_instance.sign_type, general_instance.prev_sign_type);
     if (general_instance.sign_type == SIGN_RIGHT)
     {
-        static double start_time = ros::Time::now().toSec();
+        printf("Time : %f\n", ros::Time::now().toSec() - start_time);
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
             // printf("RIGHT\n");
-            motion_return.linear = 3.7;
+            motion_return.linear = 3.5;
             TransmitData(&general_instance);
             return;
         }
-        static float current_angle = general_instance.car_pose.th;
-        static float target_angle = current_angle - 90;
 
-        if (target_angle < 0)
-            target_angle += 360;
-        else if (target_angle > 360)
-            target_angle -= 360;
+        if (target_angle_right < 0)
+            target_angle_right += 360;
+        else if (target_angle_right > 360)
+            target_angle_right -= 360;
 
-        float angle_error = target_angle - general_instance.car_pose.th;
+        float angle_error = target_angle_right - general_instance.car_pose.th;
         // angle error should be -90 < angle_error < 90
         if (angle_error > 180)
             angle_error -= 360;
         else if (angle_error < -180)
             angle_error += 360;
 
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
         AngularControl(angle_error, 0.8);
         motion_return.linear = 3;
         if (fabs(angle_error) < 5)
@@ -103,7 +114,6 @@ void DriveUrban()
     }
     else if (general_instance.sign_type == SIGN_FORWARD)
     {
-        static double start_time = ros::Time::now().toSec();
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(5).toSec())
         {
             // printf("forward\n");
@@ -116,7 +126,6 @@ void DriveUrban()
     }
     else if (general_instance.sign_type == SIGN_LEFT)
     {
-        static double start_time = ros::Time::now().toSec();
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
             // printf("forward\n");
@@ -124,22 +133,20 @@ void DriveUrban()
             TransmitData(&general_instance);
             return;
         }
-        static float current_angle = general_instance.car_pose.th;
-        static float target_angle = current_angle + 90;
 
-        if (target_angle < 0)
-            target_angle += 360;
-        else if (target_angle > 360)
-            target_angle -= 360;
+        if (target_angle_left < 0)
+            target_angle_left += 360;
+        else if (target_angle_left > 360)
+            target_angle_left -= 360;
 
-        float angle_error = target_angle - general_instance.car_pose.th;
+        float angle_error = target_angle_left - general_instance.car_pose.th;
 
         if (angle_error > 180)
             angle_error -= 360;
         else if (angle_error < -180)
             angle_error += 360;
 
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle);
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_left);
         AngularControl(angle_error, 0.5);
         motion_return.linear = 3;
         TransmitData(&general_instance);
@@ -156,6 +163,8 @@ withoutSign:;
     DecideCarTarget(&general_instance);
     RobotMovement(&general_instance);
     TransmitData(&general_instance);
+
+    general_instance.prev_sign_type = general_instance.sign_type;
 }
 
 void GetKeyboard()
@@ -615,10 +624,7 @@ void RobotMovement(general_data_ptr data)
 {
     static float vel_linear = 0;
     static float vel_angular = 0;
-    // // PURE PURSUIT
     float ld = 10;
-
-    // ROS_INFO("TARGET : %f %f", data->car_target.x, data->car_target.y);
 
     // from rear wheel
     float dist_x = data->car_target.x + 3.8;
@@ -628,9 +634,10 @@ void RobotMovement(general_data_ptr data)
     if (dist_y < 0)
         alpha += DEG2RAD(180);
     float l = 2.8;
-
     float delta = atan(2 * l * sin(alpha) / ld);
-    vel_linear = 20;
+    if (!is_urban)
+    {
+        vel_linear = 20;
     if (abs(data->car_target.y) > 4)
     {
         Logger(CYAN, "SLOWED DOWN");
@@ -638,6 +645,14 @@ void RobotMovement(general_data_ptr data)
     }
     else if (data->obs_status == true)
         vel_linear *= 0.65;
+    }
+    else
+    {
+        vel_linear = 10;
+        if (data->obs_status == true)
+            vel_linear *= 0.65;
+    }
+
     if (data->car_target.y < 0)
         vel_angular = (delta)*vel_linear / 0.2;
     else
@@ -695,13 +710,26 @@ int MasterInit()
 
         YAML::Node config = YAML::LoadFile(cfg_file);
 
-        pid_linear_const.kp = config["PID"]["Linear"]["kp"].as<float>();
-        pid_linear_const.ki = config["PID"]["Linear"]["ki"].as<float>();
-        pid_linear_const.kd = config["PID"]["Linear"]["kd"].as<float>();
+        if (is_urban)
+        {
+            pid_linear_const.kp = config["PID_URBAN"]["Linear"]["kp"].as<float>();
+            pid_linear_const.ki = config["PID_URBAN"]["Linear"]["ki"].as<float>();
+            pid_linear_const.kd = config["PID_URBAN"]["Linear"]["kd"].as<float>();
 
-        pid_angular_const.kp = config["PID"]["Angular"]["kp"].as<float>();
-        pid_angular_const.ki = config["PID"]["Angular"]["ki"].as<float>();
-        pid_angular_const.kd = config["PID"]["Angular"]["kd"].as<float>();
+            pid_angular_const.kp = config["PID_URBAN"]["Angular"]["kp"].as<float>();
+            pid_angular_const.ki = config["PID_URBAN"]["Angular"]["ki"].as<float>();
+            pid_angular_const.kd = config["PID_URBAN"]["Angular"]["kd"].as<float>();
+        }
+        else
+        {
+            pid_linear_const.kp = config["PID_RACE"]["Linear"]["kp"].as<float>();
+            pid_linear_const.ki = config["PID_RACE"]["Linear"]["ki"].as<float>();
+            pid_linear_const.kd = config["PID_RACE"]["Linear"]["kd"].as<float>();
+
+            pid_angular_const.kp = config["PID_RACE"]["Angular"]["kp"].as<float>();
+            pid_angular_const.ki = config["PID_RACE"]["Angular"]["ki"].as<float>();
+            pid_angular_const.kd = config["PID_RACE"]["Angular"]["kd"].as<float>();
+        }
     }
     catch (YAML::BadFile &e)
     {
