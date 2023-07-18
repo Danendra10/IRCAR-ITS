@@ -84,7 +84,7 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
     {
         float curr_range = ranges[i];
         float obs_x, obs_y;
-        if (ranges[i] < 7)
+        if (ranges[i] < lidar_range)
         {
             // based on car perspective
             obs_y = cos(DEG2RAD(i)) * curr_range;
@@ -94,6 +94,14 @@ void SubLidarCllbck(const sensor_msgs::LaserScanConstPtr &msg)
             raw_obstacles.y.push_back(obs_y);
             raw_obstacles.dist.push_back(curr_range);
         }
+    }
+    if (ranges[0] > lidar_range && ranges[ranges.size() - 1] > lidar_range)
+    {
+        raw_obstacles.is_lidar_free = true;
+    }
+    else
+    {
+        raw_obstacles.is_lidar_free = false;
     }
     pub_lidar_data.publish(raw_obstacles);
 }

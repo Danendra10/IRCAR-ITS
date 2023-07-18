@@ -88,6 +88,8 @@ typedef Pose2D Obstacles, *ObstaclesPtr;
 typedef Vector3D Velocity, *VelocityPtr;
 typedef Vector3D Target, *TargetPtr;
 
+int lidar_range = 9;
+
 PID_Const pid_linear_const;
 PID_Const pid_angular_const;
 #endif
