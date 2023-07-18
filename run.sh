@@ -18,7 +18,7 @@ fi
 # if the first argument is 1 then run in real mod
 if [ "$1" = "1" ]; then
     echo "Running in real mode"
-    roslaunch master master.launch is_urban:=1
+    roslaunch master master.launch is_urban:=1 vel:=10
 else 
     echo "Running in race mode with vel = $1"
     roslaunch master master.launch is_urban:=0 vel:=$1

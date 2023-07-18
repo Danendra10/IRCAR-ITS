@@ -58,6 +58,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
     }
     else
     {
+        printf("URBAN, validator : %d\n", data_validator);
         if (data_validator < 0b011)
             return;
 
@@ -119,7 +120,7 @@ void DriveUrban()
         while (angle_error > 180)
             angle_error -= 360;
 
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(2.6).toSec())
         {
             motion_return.linear = 4.5;
             motion_return.angular = 0;
@@ -142,11 +143,24 @@ void DriveUrban()
 
     else if (general_instance.sign_type == SIGN_FORWARD)
     {
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(8).toSec())
+
+        float angle_error = target_angle_forward - general_instance.car_pose.th;
+
+        while (angle_error < -180)
+            angle_error += 360;
+        while (angle_error > 180)
+            angle_error -= 360;
+
+        int8_t mult = (angle_error > 0) ? 1 : -1;
+        // float vel_output = 0.01 * mult;
+        // Logger(RED, "%f %f %f || %f", angle_error, general_instance.car_pose.th, target_angle_forward, vel_output);
+
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(6).toSec())
         {
             printf("FORWARD\n");
             motion_return.linear = 3;
-            motion_return.angular = 0;
+            // motion_return.angular = 0;
+            AngularControl(angle_error, -0.3);
             TransmitData(&general_instance);
             return;
         }
