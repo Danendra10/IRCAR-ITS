@@ -134,8 +134,8 @@ void DriveUrban()
             goto withoutSign;
         }
 
-        AngularControl(angle_error, -0.8);
-        motion_return.linear = 3;
+        AngularControl(angle_error, -2);
+        motion_return.linear = 6;
 
         TransmitData(&general_instance);
         return;
@@ -155,7 +155,7 @@ void DriveUrban()
         // float vel_output = 0.01 * mult;
         // Logger(RED, "%f %f %f || %f", angle_error, general_instance.car_pose.th, target_angle_forward, vel_output);
 
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(6).toSec())
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(9).toSec())
         {
             printf("FORWARD\n");
             motion_return.linear = 3;
@@ -191,8 +191,8 @@ void DriveUrban()
             goto withoutSign;
         }
 
-        AngularControl(angle_error, -0.8);
-        motion_return.linear = 3;
+        AngularControl(angle_error, -2);
+        motion_return.linear = 6;
 
         TransmitData(&general_instance);
         return;
