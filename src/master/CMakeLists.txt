@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   motion
   geometry_msgs
   msg_collection
-  nav_msgs
 )
 
 find_package(OpenCV REQUIRED)
