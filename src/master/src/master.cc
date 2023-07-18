@@ -175,10 +175,10 @@ void DriveUrban()
         while (angle_error > 180)
             angle_error -= 360;
 
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(2.6).toSec())
         {
             printf("left\n");
-            motion_return.linear = 3.5;
+            motion_return.linear = 4.5;
             motion_return.angular = 0;
             TransmitData(&general_instance);
             return;
@@ -439,7 +439,7 @@ void DecideCarTarget(general_data_ptr general_data)
     }
     else if (general_data->last_lidar_status && general_data->is_lidar_free)
     {
-        // Logger(MAGENTA, "KEEP FORWARD");
+        Logger(MAGENTA, "KEEP FORWARD");
         general_data->car_target.y = 0;
         general_data->keep_forward = true;
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
