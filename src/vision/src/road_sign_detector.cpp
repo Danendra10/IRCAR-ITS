@@ -45,7 +45,6 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
 {
     if (validator != 0b001)
         return;
-    // cout << __LINE__ << endl;
 
     if (frame_raw.empty())
     {
@@ -53,10 +52,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         return;
     }
 
-    // cout << __LINE__ << endl;
-
     output_image = frame_raw.clone();
-    // cout << __LINE__ << endl;
 
     //---Preprocessing
     /**
@@ -66,30 +62,20 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
      */
     cvtColor(frame_raw, frame_gray, CV_BGR2GRAY);
     threshold(frame_gray, thresholded, thresh_road_sign, max_val, THRESH_BINARY);
-    // cout << __LINE__ << endl;
     // adaptiveThreshold(frame_gray, thresholded, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 2);
-    // cout << __LINE__ << endl;
 
     erode(thresholded, thresholded, Mat(), Point(-1, -1), 2);
-    // cout << __LINE__ << endl;
     dilate(thresholded, thresholded, Mat(), Point(-1, -1), 2);
-    // cout << __LINE__ << endl;
 
     //--->Aruco Detect marker using the thresholded image
     aruco::detectMarkers(frame_raw, dictionary, marker_corners, marker_ids, detector_params_ptr, rejected_candidates);
-    // cout << __LINE__ << endl;
     aruco::drawDetectedMarkers(output_image, marker_corners, marker_ids);
-    // cout << __LINE__ << endl;
 
     //---find the closest marker
     float min_dist = 1000000;
-    // cout << __LINE__ << endl;
     int min_index = -1;
-    // cout << __LINE__ << endl;
     static int prev_min_index = -1;
-    // cout << __LINE__ << endl;
     static int last_id = -1;
-    // cout << __LINE__ << endl;
 
     /**
      * @brief This for loop is used to find the closest marker to the camera
@@ -99,17 +85,12 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     for (int i = 0; i < marker_ids.size(); ++i)
     {
         int id = marker_ids[i];
-        // cout << __LINE__ << endl;
         Point2f center = (marker_corners[i][0] + marker_corners[i][1] + marker_corners[i][2] + marker_corners[i][3]) / 4;
-        // cout << __LINE__ << endl;
         float dist = sqrt(center.x * center.x + center.y * center.y);
-        // cout << __LINE__ << endl;
         if (dist < min_dist)
         {
             min_dist = dist;
-            // cout << __LINE__ << endl;
             min_index = i;
-            // cout << __LINE__ << endl;
         }
     }
 
@@ -127,12 +108,12 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         counter = 0;
         prev_min_index = min_index;
     }
-    // cout << __LINE__ << endl;
 
     if (counter > threshold_to_delete_last_id)
     {
         last_id = -1;
     }
+    printf("Threshold: %d\n", threshold_to_delete_last_id);
     static float area_of_marker;
     // printf("Last ID: %d %f %d \n", last_id, area_of_marker, counter);
     // if (counter < threshold_counter_road_sign)
@@ -143,7 +124,6 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         printf("No marker detected\n");
         msg.data = last_id;
-        cout << __LINE__ << endl;
         pub_detected_sign_data.publish(msg);
         return;
     }
@@ -153,7 +133,6 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     Point2f center = (marker_corners[min_index][0] + marker_corners[min_index][1] + marker_corners[min_index][2] + marker_corners[min_index][3]) / 4;
     // For debug purpose
     // putText(output_image, commands[id], center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
-    // cout << __LINE__ << endl;
 
     /**
      * @brief This is a threshold to determine whether the marker is on the close spot
@@ -166,32 +145,23 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
         area_of_marker = (marker_corners[min_index][0].x - marker_corners[min_index][2].x) * (marker_corners[min_index][0].y - marker_corners[min_index][2].y);
     else
         area_of_marker = 0;
-    // cout << __LINE__ << endl;
+
+    area_of_marker = (area_of_marker < 0) ? -area_of_marker : area_of_marker;
 
     if (area_of_marker > 2000 && area_of_marker < 4000)
     {
         last_id = marker_ids[min_index];
         msg.data = last_id;
-        // cout << __LINE__ << endl;
     }
     else
         msg.data = last_id;
-    // cout << __LINE__ << endl;
     pub_detected_sign_data.publish(msg);
-    // }
-    // else
-    // {
-    //     std_msgs::UInt16 msg;
-    //     if (area_of_marker > 2550)
-    //         msg.data = last_id;
-    //     else
-    //         msg.data = 8;
-    //     pub_detected_sign_data.publish(msg);
-    // }
 
 #ifdef SHOW_FRAME
     string ids = "ID: " + to_string(last_id);
+    string area = "Area: " + to_string(area_of_marker);
     putText(output_image, ids, center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+    putText(output_image, area, Point2f(center.x, center.y + 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
     // imshow("thresholded", thresholded);
     // imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);

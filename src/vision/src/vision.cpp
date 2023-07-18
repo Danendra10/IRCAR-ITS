@@ -80,7 +80,6 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     double heading = yaw;
 
     double heading_deg = std::fmod(RAD2DEG(heading) + 360.0, 360.0);
-    // printf("heading: %f\n", heading_deg);
 
     // car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
 
