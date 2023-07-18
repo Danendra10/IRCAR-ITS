@@ -59,7 +59,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
         if (data_validator < 0b011)
             return;
 
-        // DriveUrban();
+        DriveUrban();
     }
 }
 
@@ -73,41 +73,44 @@ void DriveUrban()
     {
         start_time = ros::Time::now().toSec();
         current_angle = general_instance.car_pose.th;
-        target_angle_right = current_angle - 90;
+        // todo: butuh predefined target saja
+        if (current_angle > 275 && current_angle < 45)
+            target_angle_right = current_angle - 90;
         target_angle_left = current_angle + 90;
         general_instance.prev_sign_type = general_instance.sign_type;
     }
     // printf("general_instance.sign_type: %d %d\n", general_instance.sign_type, general_instance.prev_sign_type);
     if (general_instance.sign_type == SIGN_RIGHT)
     {
-        // printf("Time : %f\n", ros::Time::now().toSec() - start_time);
+        printf("Time : %f\n", ros::Time::now().toSec() - start_time);
         if (target_angle_right < 0)
             target_angle_right += 360;
         else if (target_angle_right > 360)
             target_angle_right -= 360;
 
-        float angle_error = target_angle_right - general_instance.car_pose.th;
-        // angle error should be -90 < angle_error < 90
-        if (angle_error > 180)
-            angle_error -= 360;
-        else if (angle_error < -180)
-            angle_error += 360;
+        float angle_error = general_instance.car_pose.th - target_angle_right;
 
+        // if (angle_error > 360)
+        //     angle_error -= 360;
+        // else if (angle_error < 0)
+        //     angle_error += 360;
+
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        {
+            printf("RIGHT\n");
+            motion_return.linear = 3.5;
+            motion_return.angular = 0;
+            TransmitData(&general_instance);
+            return;
+        }
+
+        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
         if (fabs(angle_error) < 5)
         {
             general_instance.sign_type = NO_SIGN;
             goto withoutSign;
         }
 
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
-        {
-            // printf("RIGHT\n");
-            motion_return.linear = 3.5;
-            TransmitData(&general_instance);
-            return;
-        }
-
-        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
         AngularControl(angle_error, 0.8);
         motion_return.linear = 3;
 
@@ -147,6 +150,12 @@ void DriveUrban()
             angle_error -= 360;
         else if (angle_error < -180)
             angle_error += 360;
+
+        if (fabs(angle_error) < 5)
+        {
+            general_instance.sign_type = NO_SIGN;
+            goto withoutSign;
+        }
 
         // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_left);
         AngularControl(angle_error, 0.5);
@@ -272,7 +281,7 @@ void AutoDrive(general_data_ptr data)
             // Logger(RED, "Entered State Sign Right");
             if (TurnCarRight90Degree2(data, 0.5, 10) && !is_unlocked)
             {
-                Logger(RED, "Detected a Right Sign");
+                // Logger(RED, "Detected a Right Sign");
                 is_unlocked = true;
                 data->sign_type = NO_SIGN;
             }
@@ -640,13 +649,13 @@ void RobotMovement(general_data_ptr data)
     if (!is_urban)
     {
         vel_linear = 20;
-    if (abs(data->car_target.y) > 4)
-    {
-        Logger(CYAN, "SLOWED DOWN");
-        vel_linear *= 0.5;
-    }
-    else if (data->obs_status == true)
-        vel_linear *= 0.65;
+        if (abs(data->car_target.y) > 4)
+        {
+            Logger(CYAN, "SLOWED DOWN");
+            vel_linear *= 0.5;
+        }
+        else if (data->obs_status == true)
+            vel_linear *= 0.65;
     }
     else
     {

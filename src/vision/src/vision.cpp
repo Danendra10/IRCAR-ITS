@@ -80,7 +80,6 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
     double heading = yaw;
 
     double heading_deg = std::fmod(RAD2DEG(heading) + 360.0, 360.0);
-    printf("heading: %f\n", heading_deg);
 
     // car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
 
@@ -271,12 +270,7 @@ void Detect(cv::Mat frame)
     {
         // Logger(CYAN, "Showing result");
         cv::resize(result, result_resized, cv::Size(400, 400));
-<<<<<<< HEAD
         // cv::imshow("result", result_resized);
-=======
-        cv::imshow("result", result_resized);
-        // cv::setMouseCallback("result", click_event);
->>>>>>> master
     }
 }
 
