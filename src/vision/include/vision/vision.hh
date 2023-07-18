@@ -20,6 +20,9 @@
 #include <chrono>
 #include <cv_bridge/cv_bridge.h>
 #include <ros/ros.h>
+#include <cmath>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/PoseWithCovariance.h>
 
 #define RAD2DEG(rad) ((rad)*180.0 / M_PI)
 #define DEG2RAD(deg) ((deg)*M_PI / 180.0)

@@ -59,7 +59,7 @@ void CllbckTim60Hz(const ros::TimerEvent &event)
         if (data_validator < 0b011)
             return;
 
-        DriveUrban();
+        // DriveUrban();
     }
 }
 
@@ -80,15 +80,7 @@ void DriveUrban()
     // printf("general_instance.sign_type: %d %d\n", general_instance.sign_type, general_instance.prev_sign_type);
     if (general_instance.sign_type == SIGN_RIGHT)
     {
-        printf("Time : %f\n", ros::Time::now().toSec() - start_time);
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
-        {
-            // printf("RIGHT\n");
-            motion_return.linear = 3.5;
-            TransmitData(&general_instance);
-            return;
-        }
-
+        // printf("Time : %f\n", ros::Time::now().toSec() - start_time);
         if (target_angle_right < 0)
             target_angle_right += 360;
         else if (target_angle_right > 360)
@@ -101,14 +93,24 @@ void DriveUrban()
         else if (angle_error < -180)
             angle_error += 360;
 
-        printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
-        AngularControl(angle_error, 0.8);
-        motion_return.linear = 3;
         if (fabs(angle_error) < 5)
         {
             general_instance.sign_type = NO_SIGN;
             goto withoutSign;
         }
+
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
+        {
+            // printf("RIGHT\n");
+            motion_return.linear = 3.5;
+            TransmitData(&general_instance);
+            return;
+        }
+
+        // printf("angle_error: %f || %f %f\n", angle_error, general_instance.car_pose.th, target_angle_right);
+        AngularControl(angle_error, 0.8);
+        motion_return.linear = 3;
+
         TransmitData(&general_instance);
         return;
     }
@@ -128,7 +130,7 @@ void DriveUrban()
     {
         if ((ros::Time::now().toSec() - start_time) < ros::Duration(3).toSec())
         {
-            // printf("forward\n");
+            // printf("left\n");
             motion_return.linear = 10;
             TransmitData(&general_instance);
             return;

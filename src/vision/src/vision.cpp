@@ -56,14 +56,39 @@ void SubOdomRaw(const nav_msgs::Odometry::ConstPtr &msg)
 {
     car_pose.x = msg->pose.pose.position.x;
     car_pose.y = msg->pose.pose.position.y;
-    car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
+
+    double qx = msg->pose.pose.orientation.x;
+    double qy = msg->pose.pose.orientation.y;
+    double qz = msg->pose.pose.orientation.z;
+    double qw = msg->pose.pose.orientation.w;
+
+    double roll, pitch, yaw;
+
+    double t0 = +2.0 * (qw * qx + qy * qz);
+    double t1 = +1.0 - 2.0 * (qx * qx + qy * qy);
+    roll = std::atan2(t0, t1);
+
+    double t2 = +2.0 * (qw * qy - qz * qx);
+    t2 = (t2 > 1.0) ? 1.0 : t2;
+    t2 = (t2 < -1.0) ? -1.0 : t2;
+    pitch = std::asin(t2);
+
+    double t3 = +2.0 * (qw * qz + qx * qy);
+    double t4 = +1.0 - 2.0 * (qy * qy + qz * qz);
+    yaw = std::atan2(t3, t4);
+
+    double heading = yaw;
+
+    double heading_deg = std::fmod(RAD2DEG(heading) + 360.0, 360.0);
+    printf("heading: %f\n", heading_deg);
+
+    // car_pose.th = RAD2DEG(2 * atan2(msg->pose.pose.orientation.z, msg->pose.pose.orientation.w));
 
     geometry_msgs::Point car_pose_msg;
     car_pose_msg.x = car_pose.x;
     car_pose_msg.y = car_pose.y;
     car_pose_msg.z = car_pose.th;
     pub_car_pose.publish(car_pose_msg);
-    // ROS_ERROR("z = %f || w = %f || th = %f", msg->pose.pose.orientation.z, msg->pose.pose.orientation.w, car_pose.th);
 }
 
 void SubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
