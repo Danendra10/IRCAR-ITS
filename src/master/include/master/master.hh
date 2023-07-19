@@ -46,6 +46,8 @@ typedef struct general_data_tag
 
     vector<Obstacles> raw_obs_data;
     vector<Obstacles> obs_data;
+    vector<Obstacles> raw_obs_data_far;
+    vector<Obstacles> obs_data_far;
 
     ros::Publisher pub_car_vel;
     ros::Publisher pub_cmd_vision;
@@ -65,6 +67,10 @@ typedef struct general_data_tag
     MachineState main_state;
 
     bool obs_status;
+    bool obs_status_far;
+
+    int prev_data_obs;
+
     uint8_t car_side;
     uint8_t moved_state;
     int sign_type;
@@ -79,6 +85,8 @@ typedef struct general_data_tag
     bool is_lidar_free;
     bool last_lidar_status;
     bool keep_forward;
+    bool previous_right;
+    bool lidar_more_than_15;
 
     float buffer_target_x;
     float buffer_target_y;
@@ -129,6 +137,8 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
 {
     general_instance.raw_obs_data.clear();
     general_instance.obs_data.clear();
+    general_instance.raw_obs_data_far.clear();
+    general_instance.obs_data_far.clear();
 
     data_validator |= 0b010;
 
@@ -137,6 +147,12 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
     if (msg->x.size() == 0)
     {
         general_instance.obs_status = false;
+        return;
+    }
+
+    if (msg->x_far.size() == 0)
+    {
+        general_instance.obs_status_far = false;
         return;
     }
 
@@ -155,6 +171,23 @@ void CllbckSubLidarData(const msg_collection::Obstacles::ConstPtr &msg)
         general_instance.obs_data.push_back(obs);
 
         general_instance.obs_status = true;
+    }
+
+    for (int i = 0; i < msg->x_far.size(); i++)
+    {
+        Obstacles raw_obs_far;
+        raw_obs_far.x = msg->x[i];
+        raw_obs_far.y = msg->y[i];
+        general_instance.raw_obs_data_far.push_back(raw_obs_far);
+        // float dst = sqrt(pow(raw_obs_far.x, 2) + pow(raw_obs_far.y, 2));
+        // if (i % 5 == 0)
+
+        Obstacles obs_far;
+        obs_far.x = msg->x[i] + general_instance.car_pose.x;
+        obs_far.y = msg->y[i] + general_instance.car_pose.y;
+        general_instance.obs_data_far.push_back(obs_far);
+
+        general_instance.obs_status_far = true;
     }
 }
 
@@ -224,7 +257,7 @@ void CllbckSubRealLaneVector(const msg_collection::RealPosition::ConstPtr &msg)
     // if (general_instance.right_available)
     //     Logger(YELLOW, "Right Available");
     float spacer_x = 800 - 600;
-    float spacer_y = 35;
+    float spacer_y = 15;
     float dist_x_left = 800 - 600;
     float dist_y_left = (msg->left_lane_x_bottom + msg->left_lane_x_top) / 2.0 - 400;
     float dist_x_middle = 800 - 600;
@@ -296,6 +329,61 @@ void CllbckSubVisionRoadSignPy(const std_msgs::StringConstPtr &msg, general_data
 void CllbckAngleError(const std_msgs::Float32ConstPtr &msg, general_data_ptr general_instance)
 {
     general_instance->angle_error = msg->data;
+}
+
+void ChoosingLane()
+{
+    switch (general_instance.car_side)
+    {
+    case 10:
+        // printf("TARGET KIRI\n");
+        if (general_instance.left_available && general_instance.middle_available)
+        {
+            Logger(CYAN, "KIRI TENGAH");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = (general_instance.car_target_left.y + general_instance.car_target_middle.y) / 2.0 - general_instance.spacer_real_y;
+        }
+        else if (general_instance.left_available)
+        {
+            Logger(CYAN, "KIRI");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = general_instance.car_target_left.y + general_instance.divider - general_instance.spacer_real_y;
+        }
+        else if (general_instance.middle_available)
+        {
+            Logger(CYAN, "TENGAH");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = general_instance.car_target_middle.y - general_instance.divider - general_instance.spacer_real_y;
+        }
+
+        break;
+
+    case 20:
+        // printf("TARGET KANAN\n");
+        if (general_instance.right_available && general_instance.middle_available)
+        {
+            Logger(CYAN, "TENGAH KANAN");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = (general_instance.car_target_right.y + general_instance.car_target_middle.y) / 2.0 + general_instance.spacer_real_y;
+        }
+        else if (general_instance.right_available)
+        {
+            Logger(CYAN, "KANAN");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = general_instance.car_target_right.y - general_instance.divider + general_instance.spacer_real_y;
+        }
+        else if (general_instance.middle_available)
+        {
+            Logger(CYAN, "TENGAH");
+            general_instance.car_target.x = lidar_range * 2.0 / 5.0;
+            general_instance.car_target.y = general_instance.car_target_middle.y + general_instance.divider + general_instance.spacer_real_y;
+        }
+
+        break;
+
+    default:
+        break;
+    }
 }
 
 //==============================================================================

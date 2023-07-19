@@ -299,80 +299,49 @@ void DecideCarTarget(general_data_ptr general_data)
         float obs_from_left_target, obs_from_right_target;
 
         if (!general_data->obs_status)
+        {
             general_data->car_side = 0;
-
+            Logger(CYAN, "CENTER");
+        }
         else
         {
             float right_obs_y = general_data->raw_obs_data[0].y;
             float left_obs_y = general_data->raw_obs_data[general_data->raw_obs_data.size() - 1].y;
+            if (general_data->raw_obs_data.size() > 15)
+            {
+                Logger(CYAN, "CHOOSING LANE");
+                general_data->lidar_more_than_15 = true;
+                if (general_data->left_available)
+                    obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
+                else if (general_data->middle_available)
+                    obs_from_left_target = abs(left_obs_y - (general_data->car_target_middle.y - 2 * general_data->divider));
+                if (general_data->right_available)
+                    obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
+                else if (general_data->middle_available)
+                    obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
 
-            if (general_data->left_available)
-                obs_from_left_target = abs(left_obs_y - general_data->car_target_left.y);
-            else if (general_data->middle_available)
-                obs_from_left_target = abs(left_obs_y - (general_data->car_target_middle.y - 2 * general_data->divider));
-            if (general_data->right_available)
-                obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
-            else if (general_data->middle_available)
-                obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-            // Logger(BLUE, "obs --- left %f right %f || dist --- left %f right %f", left_obs_y, right_obs_y, obs_from_left_target, obs_from_right_target);
+                obs_from_left_target = (obs_from_left_target > 0) ? obs_from_left_target : -obs_from_left_target;
+                obs_from_right_target = (obs_from_right_target > 0) ? obs_from_right_target : -obs_from_right_target;
 
-            if ((obs_from_left_target - obs_from_right_target) > 0.05)
-                general_data->car_side = 10;
-            else if ((obs_from_right_target - obs_from_left_target) > 0.05)
-                general_data->car_side = 20;
+                if (obs_from_left_target > obs_from_right_target)
+                {
+                    general_data->car_side = 10;
+                }
+
+                else if (obs_from_right_target > obs_from_left_target)
+                {
+                    general_data->car_side = 20;
+                }
+            }
+            else
+            {
+                general_data->lidar_more_than_15 = false;
+            }
+            // Logger(BLUE, "obs --- left %f right %f || dist --- left %f right %f || %d ", left_obs_y, right_obs_y, obs_from_left_target, obs_from_right_target, general_data->raw_obs_data.size());
         }
 
-        switch (general_data->car_side)
-        {
-        case 10:
-            // printf("TARGET KIRI\n");
-            if (general_data->left_available && general_data->middle_available)
-            {
-                Logger(CYAN, "KIRI TENGAH");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y) / 2.0 - general_data->spacer_real_y;
-            }
-            else if (general_data->left_available)
-            {
-                Logger(CYAN, "KIRI");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = general_data->car_target_left.y + general_data->divider - general_data->spacer_real_y;
-            }
-            else if (general_data->middle_available)
-            {
-                Logger(CYAN, "TENGAH");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
-            }
-
-            break;
-
-        case 20:
-            // printf("TARGET KANAN\n");
-            if (general_data->right_available && general_data->middle_available)
-            {
-                Logger(CYAN, "TENGAH KANAN");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
-            }
-            else if (general_data->right_available)
-            {
-                Logger(CYAN, "KANAN");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
-            }
-            else if (general_data->middle_available)
-            {
-                Logger(CYAN, "TENGAH");
-                general_data->car_target.x = lidar_range * 2.0 / 5.0;
-                general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
-            }
-
-            break;
-
-        default:
-            break;
-        }
+        Logger(YELLOW, "car side %d", general_data->car_side);
+        ChoosingLane();
 
         // if (is_urban)
         // {
@@ -416,20 +385,21 @@ void DecideCarTarget(general_data_ptr general_data)
     {
         ROS_ERROR_STREAM("Error caught on line: " << __LINE__);
     }
-
+    // Logger(RED, "prev right %d", general_data->previous_right);
     if (general_data->obs_status)
     {
         general_data->prev_x = general_data->car_pose.x;
         general_data->prev_y = general_data->car_pose.y;
         general_data->last_lidar_status = true;
     }
-    else if (general_data->last_lidar_status && general_data->is_lidar_free)
+    else
     {
-        // Logger(MAGENTA, "KEEP FORWARD");
-        general_data->car_target.y = 0;
+        ChoosingLane();
         general_data->keep_forward = true;
+
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
         {
+            Logger(RED, "STOP FORWARD");
             general_data->last_lidar_status = false;
             general_data->keep_forward = false;
         }
