@@ -1,7 +1,7 @@
 #include "sign_detector/aruco.hpp"
 
 #define SHOW_FRAME
-// #define SHOW_SLIDER
+#define SHOW_SLIDER
 
 int main(int argc, char **argv)
 {
@@ -113,7 +113,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     {
         last_id = -1;
     }
-    printf("Threshold: %d\n", threshold_to_delete_last_id);
+    // printf("Threshold: %d\n", threshold_to_delete_last_id);
     static float area_of_marker;
     // printf("Last ID: %d %f %d \n", last_id, area_of_marker, counter);
     // if (counter < threshold_counter_road_sign)
@@ -146,6 +146,8 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     else
         area_of_marker = 0;
 
+    // printf("Area of marker %d\n", area_of_marker);
+
     area_of_marker = (area_of_marker < 0) ? -area_of_marker : area_of_marker;
 
     if (area_of_marker > 2000 && area_of_marker < 4000)
@@ -162,7 +164,7 @@ void CallbackTimer30Hz(const ros::TimerEvent &event)
     string area = "Area: " + to_string(area_of_marker);
     putText(output_image, ids, center, FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
     putText(output_image, area, Point2f(center.x, center.y + 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
-    // imshow("thresholded", thresholded);
+    imshow("thresholded", thresholded);
     // imshow("Raw Frame", frame_raw);
     imshow("Out Frame", output_image);
 #endif
