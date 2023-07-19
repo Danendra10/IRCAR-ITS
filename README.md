@@ -30,7 +30,7 @@ cmake --build .
 - YAML
 
 ```bash
-sudo apt install libyaml-cpp
+sudo apt install libyaml-cpp-dev
 ```
 
 ## Fresh Copied project
