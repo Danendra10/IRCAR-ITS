@@ -451,6 +451,8 @@ void RobotMovement(general_data_ptr data)
                 vel_linear *= 0.5;
             else if (vel_linear == 25)
                 vel_linear *= 0.3;
+            else if (vel_linear == 30)
+                vel_linear *= 0.25;
         }
         else if (data->obs_status)
             vel_linear *= 0.65;
