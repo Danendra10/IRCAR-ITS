@@ -3,7 +3,7 @@ current_path=$(pwd)
 
 source devel/setup.bash
 
-catkin_make
+# catkin_make
 
 if [ $? -ne 0 ]; then
     echo ""
