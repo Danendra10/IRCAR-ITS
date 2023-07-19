@@ -11,19 +11,19 @@ PID_RACE_10:
     ki: 0
     kd: 0.01
   Angular:
-    kp: 0.1
+    kp: 0.12
     ki: 0
     kd: 0.1
 
 PID_RACE_20:
   Linear:
-    kp: 0.7
+    kp: 0.65
     ki: 0
-    kd: 0.01
+    kd: 0.03
   Angular:
-    kp: 0.05
+    kp: 0.06
     ki: 0
-    kd: 0.01
+    kd: 0.05
 
 PID_RACE_25:
   Linear:
@@ -34,6 +34,16 @@ PID_RACE_25:
     kp: 0.03
     ki: 0
     kd: 0.001
+
+PID_RACE_30:
+  Linear:
+    kp: 0.45
+    ki: 0
+    kd: 0.07
+  Angular:
+    kp: 0.01
+    ki: 0
+    kd: 0.0005
 
 PID_URBAN:
   Linear:

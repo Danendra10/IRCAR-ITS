@@ -238,6 +238,7 @@ void MoveRobot(float vx_, float vz_)
 
 void SimulatorState()
 {
+    general_instance.main_state.value = AUTONOMOUS;
     switch (general_instance.main_state.value)
     {
     case FORWARD:
@@ -278,19 +279,10 @@ void SetRobotSteering(general_data_ptr general_data, float steering)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
-    // if (general_data->obs_status)
-    //     Logger(RED, "DEKET");
-
-    // if (general_data->obs_status_far)
-    //     Logger(YELLOW, "JAUH");
     // left and right from car's pov
     general_data->car_target.x = general_data->buffer_target_x;
     general_data->car_target.y = general_data->buffer_target_y;
 
-    // Logger(RED, "left %d || middle %d || right %d", general_data->left_available, general_data->middle_available, general_data->right_available);
-
-    // Logger(MAGENTA, "%f - %f = %f", general_data->car_pose.x, general_data->prev_x_odom, general_data->car_pose.x - general_data->prev_x_odom);
-    // Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
     try
     {
         if (data_validator < 0b011)
@@ -314,7 +306,6 @@ void DecideCarTarget(general_data_ptr general_data)
                 obs_from_right_target = abs(right_obs_y - general_data->car_target_right.y);
             else if (general_data->middle_available)
                 obs_from_right_target = abs(right_obs_y - (general_data->car_target_middle.y + 2 * general_data->divider));
-            // Logger(BLUE, "obs --- left %f right %f || dist --- left %f right %f", left_obs_y, right_obs_y, obs_from_left_target, obs_from_right_target);
 
             if ((obs_from_left_target - obs_from_right_target) > 0.05)
                 general_data->car_side = 10;
@@ -325,45 +316,36 @@ void DecideCarTarget(general_data_ptr general_data)
         switch (general_data->car_side)
         {
         case 10:
-            // printf("TARGET KIRI\n");
             if (general_data->left_available && general_data->middle_available)
             {
-                Logger(CYAN, "KIRI TENGAH");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = (general_data->car_target_left.y + general_data->car_target_middle.y) / 2.0 - general_data->spacer_real_y;
             }
             else if (general_data->left_available)
             {
-                Logger(CYAN, "KIRI");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_left.y + general_data->divider - general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
-                Logger(CYAN, "TENGAH");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_middle.y - general_data->divider - general_data->spacer_real_y;
             }
-
             break;
 
         case 20:
-            // printf("TARGET KANAN\n");
             if (general_data->right_available && general_data->middle_available)
             {
-                Logger(CYAN, "TENGAH KANAN");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
             }
             else if (general_data->right_available)
             {
-                Logger(CYAN, "KANAN");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
             }
             else if (general_data->middle_available)
             {
-                Logger(CYAN, "TENGAH");
                 general_data->car_target.x = lidar_range * 2.0 / 5.0;
                 general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
             }
@@ -373,39 +355,6 @@ void DecideCarTarget(general_data_ptr general_data)
         default:
             break;
         }
-
-        // if (is_urban)
-        // {
-        //     if (general_data->right_available && general_data->middle_available)
-        //     {
-        //         Logger(CYAN, "TENGAH KANAN");
-        //         general_data->car_target.x = lidar_range / 3.0;
-        //         general_data->car_target.y = (general_data->car_target_right.y + general_data->car_target_middle.y) / 2.0 + general_data->spacer_real_y;
-        //     }
-        //     else if (general_data->right_available)
-        //     {
-        //         Logger(CYAN, "KANAN");
-        //         general_data->car_target.x = lidar_range / 3.0;
-        //         general_data->car_target.y = general_data->car_target_right.y - general_data->divider + general_data->spacer_real_y;
-        //     }
-        //     else if (general_data->middle_available)
-        //     {
-        //         Logger(CYAN, "TENGAH");
-        //         general_data->car_target.x = lidar_range / 3.0;
-        //         general_data->car_target.y = general_data->car_target_middle.y + general_data->divider + general_data->spacer_real_y;
-        //     }
-        // }
-
-        // Logger(BLUE, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
-        // Logger(YELLOW, "READYYYYYYY %d", general_instance.isReady);
-        // ROS_INFO("FIXED TARGETTT %f %f\n", general_data->car_target.x, general_data->car_target.y);
-
-        // ROS_INFO("target %f %f %f\n", general_data->car_target_left.x, general_data->car_target_left.y, general_data->car_target_left.th);
-        // ROS_INFO("target %f %f %f\n", general_data->car_target_right.x, general_data->car_target_right.y, general_data->car_target_right.th);
-        // if (general_data->middle_lane.size() < 0)
-        //     return;
-        // if (general_data->middle_lane[midd - 1].x == 0)
-        //     return;
     }
     catch (const std::exception &e)
     {
@@ -425,7 +374,6 @@ void DecideCarTarget(general_data_ptr general_data)
     }
     else if (general_data->last_lidar_status && general_data->is_lidar_free)
     {
-        // Logger(MAGENTA, "KEEP FORWARD");
         general_data->car_target.y = 0;
         general_data->keep_forward = true;
         if (abs(sqrt(pow(general_data->prev_x, 2) + pow(general_data->prev_y, 2)) - sqrt(pow(general_data->car_pose.x, 2) + pow(general_data->car_pose.y, 2))) > 0.5)
@@ -469,23 +417,14 @@ void RobotMovement(general_data_ptr data)
         vel_linear = vel;
         if (abs(data->car_target.y) > 4)
         {
-            Logger(CYAN, "SLOWED DOWN");
             if (vel_linear == 10)
-            {
                 vel_linear = vel_linear;
-            }
             else if (vel_linear == 15)
-            {
                 vel_linear *= 0.65;
-            }
             else if (vel_linear == 20)
-            {
                 vel_linear *= 0.5;
-            }
             else if (vel_linear == 25)
-            {
                 vel_linear *= 0.3;
-            }
         }
         else if (data->obs_status)
             vel_linear *= 0.65;
