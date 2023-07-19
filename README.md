@@ -5,7 +5,7 @@
 - Ros deps
 
 ```bash
-sudo apt instak ros-noetic-cv-bridge ros-noetic-image-transport
+sudo apt install ros-noetic-cv-bridge ros-noetic-image-transport ros-noetic-nav-msgs ros-noetic-sensor-msgs
 ```
 
 - Opencv With Contrib
@@ -25,4 +25,29 @@ cmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-4.x/modules ../opencv-4.x
 
 cmake --build .
 
+```
+
+- YAML
+
+```bash
+sudo apt install libyaml-cpp
+```
+
+## Fresh Copied project
+
+```bash
+chmod +x *.sh
+./init_make.sh
+```
+
+## Run Race Program
+
+```bash
+./run.sh 25
+```
+
+## Run Urban Prorgram
+
+```bash
+./run.sh 1
 ```

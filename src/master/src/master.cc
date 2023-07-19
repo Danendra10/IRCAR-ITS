@@ -133,8 +133,8 @@ void DriveUrban()
             goto withoutSign;
         }
 
-        AngularControl(angle_error, -0.8);
-        motion_return.linear = 3;
+        AngularControl(angle_error, -2);
+        motion_return.linear = 6;
 
         TransmitData(&general_instance);
         return;
@@ -142,7 +142,19 @@ void DriveUrban()
 
     else if (general_instance.sign_type == SIGN_FORWARD)
     {
-        if ((ros::Time::now().toSec() - start_time) < ros::Duration(8).toSec())
+
+        float angle_error = target_angle_forward - general_instance.car_pose.th;
+
+        while (angle_error < -180)
+            angle_error += 360;
+        while (angle_error > 180)
+            angle_error -= 360;
+
+        int8_t mult = (angle_error > 0) ? 1 : -1;
+        // float vel_output = 0.01 * mult;
+        // Logger(RED, "%f %f %f || %f", angle_error, general_instance.car_pose.th, target_angle_forward, vel_output);
+
+        if ((ros::Time::now().toSec() - start_time) < ros::Duration(9).toSec())
         {
             printf("FORWARD\n");
             motion_return.linear = 3;
@@ -177,8 +189,8 @@ void DriveUrban()
             goto withoutSign;
         }
 
-        AngularControl(angle_error, -0.8);
-        motion_return.linear = 3;
+        AngularControl(angle_error, -2);
+        motion_return.linear = 6;
 
         TransmitData(&general_instance);
         return;
@@ -238,6 +250,7 @@ void MoveRobot(float vx_, float vz_)
 
 void SimulatorState()
 {
+    general_instance.main_state.value = AUTONOMOUS;
     switch (general_instance.main_state.value)
     {
     case FORWARD:
@@ -278,19 +291,10 @@ void SetRobotSteering(general_data_ptr general_data, float steering)
 
 void DecideCarTarget(general_data_ptr general_data)
 {
-    // if (general_data->obs_status)
-    //     Logger(RED, "DEKET");
-
-    // if (general_data->obs_status_far)
-    //     Logger(YELLOW, "JAUH");
     // left and right from car's pov
     general_data->car_target.x = general_data->buffer_target_x;
     general_data->car_target.y = general_data->buffer_target_y;
 
-    // Logger(RED, "left %d || middle %d || right %d", general_data->left_available, general_data->middle_available, general_data->right_available);
-
-    // Logger(MAGENTA, "%f - %f = %f", general_data->car_pose.x, general_data->prev_x_odom, general_data->car_pose.x - general_data->prev_x_odom);
-    // Logger(RED, "target x : %f | target y : %f", general_data->car_target.x, general_data->car_target.y);
     try
     {
         if (data_validator < 0b011)
@@ -439,23 +443,14 @@ void RobotMovement(general_data_ptr data)
         vel_linear = vel;
         if (abs(data->car_target.y) > 4)
         {
-            Logger(CYAN, "SLOWED DOWN");
             if (vel_linear == 10)
-            {
                 vel_linear = vel_linear;
-            }
             else if (vel_linear == 15)
-            {
                 vel_linear *= 0.65;
-            }
             else if (vel_linear == 20)
-            {
                 vel_linear *= 0.5;
-            }
             else if (vel_linear == 25)
-            {
                 vel_linear *= 0.3;
-            }
         }
         else if (data->obs_status)
             vel_linear *= 0.65;
